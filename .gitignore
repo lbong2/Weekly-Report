@@ -1,0 +1,57 @@
+# dependencies
+node_modules
+.pnp
+.pnp.js
+
+# testing
+coverage
+
+# next.js
+.next/
+out/
+build
+dist
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+*.log
+
+# env files (로컬 환경 설정)
+.env
+.env*.local
+.env.production
+apps/backend/.env
+apps/frontend/.env.local
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# turbo
+.turbo
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Claude AI
+.claude
+
+# OS
+Thumbs.db
+
+# Docker volumes (로컬 데이터)
+postgres_data/

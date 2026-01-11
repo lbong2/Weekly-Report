@@ -1,0 +1,228 @@
+// Prisma Schema - 주간보고 시스템
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ========== Enums ==========
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Position {
+  STAFF      // 사원
+  MANAGER    // 매니저
+  TEAM_LEAD  // 팀장
+}
+
+enum ReportStatus {
+  DRAFT
+  COMPLETED
+}
+
+enum AttendanceCategory {
+  LEAVE
+  BUSINESS_TRIP
+}
+
+// ========== Models ==========
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(USER)
+  position  Position @default(STAFF)
+  teamId    String   @map("team_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  team        Team           @relation(fields: [teamId], references: [id])
+  tasks       TaskAssignee[]
+  attendances Attendance[]
+  issueAssignees IssueAssignee[]
+
+  @@map("users")
+}
+
+model Team {
+  id           String   @id @default(uuid())
+  name         String
+  location     String?
+  totalMembers Int      @default(0) @map("total_members")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  users         User[]
+  weeklyReports WeeklyReport[]
+  issues        Issue[]
+
+  @@map("teams")
+}
+
+model Chain {
+  id           String   @id @default(uuid())
+  code         String   @unique
+  name         String
+  color        String   @default("#3B82F6") // 기본 파란색 (blue-600)
+  displayOrder Int      @default(0) @map("display_order")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  tasks Task[]
+  issues Issue[]
+
+  @@map("chains")
+}
+
+model WeeklyReport {
+  id         String       @id @default(uuid())
+  teamId     String       @map("team_id")
+  year       Int
+  weekNumber Int          @map("week_number")
+  weekStart  DateTime     @map("week_start") @db.Date
+  weekEnd    DateTime     @map("week_end") @db.Date
+  status     ReportStatus @default(DRAFT)
+  createdAt  DateTime     @default(now()) @map("created_at")
+  updatedAt  DateTime     @updatedAt @map("updated_at")
+
+  team        Team         @relation(fields: [teamId], references: [id])
+  tasks       Task[]
+
+  @@unique([teamId, year, weekNumber])
+  @@map("weekly_reports")
+}
+
+model Task {
+  id              String    @id @default(uuid())
+  weeklyReportId  String    @map("weekly_report_id")
+  chainId         String    @map("chain_id")
+  title           String
+  purpose         String?   @db.Text
+  startDate       DateTime? @map("start_date") @db.Date
+  endDate         DateTime? @map("end_date") @db.Date
+  totalCount      Int       @default(0) @map("total_count")
+  completedCount  Int       @default(0) @map("completed_count")
+  progress        Int       @default(0)
+  showThisWeekAchievement Boolean @default(true) @map("show_this_week_achievement")
+  nextTotalCount  Int       @default(0) @map("next_total_count")
+  nextCompletedCount Int    @default(0) @map("next_completed_count")
+  nextProgress    Int       @default(0) @map("next_progress")
+  showNextWeekAchievement Boolean @default(true) @map("show_next_week_achievement")
+  thisWeekContent String?   @map("this_week_content") @db.Text
+  nextWeekContent String?   @map("next_week_content") @db.Text
+  displayOrder    Int       @default(0) @map("display_order")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  issueId         String?   @map("issue_id")
+  issue           Issue?    @relation(fields: [issueId], references: [id])
+
+  weeklyReport WeeklyReport   @relation(fields: [weeklyReportId], references: [id], onDelete: Cascade)
+  chain        Chain          @relation(fields: [chainId], references: [id])
+  assignees    TaskAssignee[]
+
+  @@map("tasks")
+}
+
+model TaskAssignee {
+  id     String @id @default(uuid())
+  taskId String @map("task_id")
+  userId String @map("user_id")
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([taskId, userId])
+  @@map("task_assignees")
+}
+
+model AttendanceType {
+  id         String             @id @default(uuid())
+  code       String             @unique
+  name       String
+  category   AttendanceCategory
+  isLongTerm Boolean            @default(false) @map("is_long_term")
+  isActive   Boolean            @default(true) @map("is_active")
+  createdAt  DateTime           @default(now()) @map("created_at")
+  updatedAt  DateTime           @updatedAt @map("updated_at")
+
+  attendances Attendance[]
+
+  @@map("attendance_types")
+}
+
+model Attendance {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  typeId         String   @map("type_id")
+  content        String?
+  startDate      DateTime @map("start_date") @db.Date
+  endDate        DateTime @map("end_date") @db.Date
+  location       String?
+  remarks        String?
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user         User           @relation(fields: [userId], references: [id])
+  type         AttendanceType @relation(fields: [typeId], references: [id])
+
+  @@map("attendances")
+}
+
+// ========== Issue Management ==========
+
+enum IssueStatus {
+  BACKLOG
+  IN_PROGRESS
+  DONE
+  HOLD
+}
+
+model Issue {
+  id              String      @id @default(uuid())
+  teamId          String      @map("team_id")
+  chainId         String      @map("chain_id")
+  title           String
+  status          IssueStatus @default(IN_PROGRESS)
+
+  purpose         String?     @db.Text
+  startDate       DateTime?   @map("start_date") @db.Date
+  endDate         DateTime?   @map("end_date") @db.Date
+
+  // Cumulative Progress
+  totalCount      Int         @default(0) @map("total_count")
+  completedCount  Int         @default(0) @map("completed_count")
+  progress        Int         @default(0)
+
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  team            Team        @relation(fields: [teamId], references: [id])
+  chain           Chain       @relation(fields: [chainId], references: [id])
+  tasks           Task[]
+  assignees       IssueAssignee[]
+
+  @@map("issues")
+}
+
+model IssueAssignee {
+  id        String   @id @default(uuid())
+  issueId   String   @map("issue_id")
+  userId    String   @map("user_id")
+
+  issue     Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([issueId, userId])
+  @@map("issue_assignees")
+}
