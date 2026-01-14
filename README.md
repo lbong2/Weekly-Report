@@ -298,33 +298,52 @@ docker-compose up -d
 ```
 ---
 
-## 9. 라이선스
+## 9. 데이터베이스 백업 및 복원
+
+### 9.1 현재 DB 데이터 백업하기
+
+```bash
+# SQL 덤프 파일 생성 (날짜 포함)
+docker exec weekly-report-db pg_dump -U postgres -d weekly_report --clean --if-exists > db_backup_$(date +%Y%m%d).sql
+```
+
+생성된 파일 (예: `db_backup_20260114.sql`)에는 모든 데이터가 포함됩니다:
+- 사용자, 팀, 모듈
+- 주간보고서, 업무, 장기 업무
+- 인원현황, 출결 유형
+- 스키마 정보
+
+### 9.2 다른 컴퓨터에 데이터 복원하기
+
+**1) 백업 파일 복사**
+```bash
+# USB, Git, 또는 네트워크로 백업 파일 복사
+# 예: db_backup_20260114.sql
+```
+
+**2) 새 서버에서 Docker 실행**
+```bash
+docker-compose up -d
+```
+
+**3) 백업 파일 복원**
+```bash
+# 백업 파일이 있는 디렉토리에서
+docker exec -i weekly-report-db psql -U postgres -d weekly_report < db_backup_20260114.sql
+```
+
+**4) 완료!**
+- 모든 데이터가 그대로 복원됩니다
+- 마이그레이션 실행 불필요 (스키마 포함)
+- Seed 실행 불필요 (데이터 포함)
+
+### 9.3 주의사항
+- `--clean --if-exists` 옵션으로 기존 데이터를 자동으로 정리하므로 충돌 없음
+- 백업 파일은 Git에 커밋 가능 (보통 수십 KB 수준)
+- 정기적으로 백업하는 것을 권장합니다
+
+---
+
+## 10. 라이선스
 
 사내 시스템 (Private)
-
-```bash
-# 1. 환경 변수 파일 생성
-cp .env.example apps/backend/.env
-cp .env.example apps/frontend/.env
-# 필요시 파일 수정 (JWT_SECRET 등)
-
-# 2. 빌드
-docker-compose build
-
-# 3. 실행
-docker-compose up -d
-
-# 4. DB 마이그레이션 (스키마 적용)
-docker-compose exec backend npx prisma migrate deploy
-
-# 5. 초기 데이터 삽입 (관리자 계정 등)
-docker-compose exec backend npx prisma db seed
-```
-업데이트 시 
-```bash
-git pull
-docker-compose build
-docker-compose up -d
-# 마이그레이션 변경이 있으면
-docker-compose exec backend npx prisma migrate deploy
-```

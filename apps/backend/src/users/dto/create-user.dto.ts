@@ -28,4 +28,7 @@ export class CreateUserDto {
   @IsEnum(Position)
   @IsOptional()
   position?: Position;
+
+  @IsOptional()
+  displayOrder?: number;
 }

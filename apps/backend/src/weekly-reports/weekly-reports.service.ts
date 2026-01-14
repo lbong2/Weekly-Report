@@ -131,14 +131,13 @@ export class WeeklyReportsService {
                     id: true,
                     name: true,
                     email: true,
+                    displayOrder: true,
                   },
                 },
               },
             },
           },
-          orderBy: {
-            displayOrder: 'asc',
-          },
+          // orderBy 제거 - JavaScript에서 정렬
         },
       },
     });
@@ -146,6 +145,21 @@ export class WeeklyReportsService {
     if (!report) {
       throw new NotFoundException('Weekly report not found');
     }
+
+    // 담당자의 displayOrder 기준으로 정렬
+    // 여러 담당자가 있는 경우 가장 낮은 displayOrder 사용
+    report.tasks.sort((a, b) => {
+      const minOrderA =
+        a.assignees.length > 0
+          ? Math.min(...a.assignees.map((ass) => ass.user.displayOrder))
+          : Infinity;
+      const minOrderB =
+        b.assignees.length > 0
+          ? Math.min(...b.assignees.map((ass) => ass.user.displayOrder))
+          : Infinity;
+
+      return minOrderA - minOrderB;
+    });
 
     return report;
   }

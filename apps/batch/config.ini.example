@@ -1,14 +1,19 @@
 [iris]
-id = your_iris_id
-password = your_iris_password
+id = kyungbong.lee
+password = RhRme$R#Zyc2#T
 
 [auth]
-email = your_gmail_address
-app_password = your_gmail_app_password
+email = rudqhd05193@gmail.com
+app_password = qncl mviv vieh ionv
 from_email = no_reply@worksmobile.com
 initial_delay = 5
 poll_delay = 5
 poll_retries = 12
 
 [selenium]
-headless = false
+headless = true
+
+[api]
+base_url = http://localhost:4000/api/v1
+email = admin@dongkuk.com
+password = dumes01

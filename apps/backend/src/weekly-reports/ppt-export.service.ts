@@ -32,7 +32,13 @@ export class PptExportService {
                       id: true,
                       name: true,
                       position: true,
+                      displayOrder: true,
                     },
+                  },
+                },
+                orderBy: {
+                  user: {
+                    displayOrder: 'asc',
                   },
                 },
               },
@@ -112,6 +118,7 @@ export class PptExportService {
 
   /**
    * 업무 실적/계획 슬라이드 생성 (Task 2개당 1장)
+   * 같은 담당자(displayOrder)의 Task만 같은 페이지에 배치
    */
   private createTaskSlides(pptx: any, report: any) {
     const tasks = report.tasks;
@@ -141,68 +148,99 @@ export class PptExportService {
     const nextWeekStart = this.addDays(report.weekStart, 7);
     const nextWeekEnd = this.addDays(report.weekEnd, 7);
 
-    // Task 2개씩 묶어서 슬라이드 생성
-    for (let i = 0; i < tasks.length; i += 2) {
-      const slide = pptx.addSlide();
-      this.addSlideHeader(slide, report);
-
-      // 테이블 데이터 생성 (2x3 그리드)
-      const tableRows: any[] = [];
-
-      // 헤더 행 (날짜)
-      tableRows.push([
-        {
-          text: `금주 (${weekStart}~${weekEnd}) 실적`,
-          options: {
-            fill: { color: '4F81BD' },
-            color: 'FFFFFF',
-            fontSize: 12,
-            fontFace: 'Noto Sans KR Medium',
-            align: 'center',
-            valign: 'middle',
-          },
-        },
-        {
-          text: `차주 (${this.formatDate(nextWeekStart)}~${this.formatDate(nextWeekEnd)}) 계획`,
-          options: {
-            fill: { color: '4F81BD' },
-            color: 'FFFFFF',
-            fontSize: 12,
-            fontFace: 'Noto Sans KR Medium',
-            align: 'center',
-            valign: 'middle',
-          },
-        },
-      ]);
-
-      // 첫 번째 Task 행
-      const task1 = tasks[i];
-      tableRows.push(this.createTaskRow(task1));
-
-      // 두 번째 Task 행 (있으면)
-      if (i + 1 < tasks.length) {
-        const task2 = tasks[i + 1];
-        tableRows.push(this.createTaskRow(task2));
+    // Task를 담당자의 displayOrder별로 그룹화
+    // 각 Task의 담당자 중 가장 작은 displayOrder를 사용
+    const tasksByDisplayOrder = new Map<number, any[]>();
+    tasks.forEach((task: any) => {
+      // 담당자 중 가장 작은 displayOrder 찾기
+      let minDisplayOrder = Number.MAX_SAFE_INTEGER;
+      if (task.assignees && task.assignees.length > 0) {
+        task.assignees.forEach((assignee: any) => {
+          if (assignee.user.displayOrder < minDisplayOrder) {
+            minDisplayOrder = assignee.user.displayOrder;
+          }
+        });
       } else {
-        // 두 번째 Task가 없으면 빈 행 추가
-        tableRows.push([
-          { text: '', options: {} },
-          { text: '', options: {} },
-        ]);
+        // 담당자가 없으면 Task의 displayOrder 사용
+        minDisplayOrder = task.displayOrder;
       }
 
-      // 테이블 추가
-      slide.addTable(tableRows, {
-        x: 0.3,
-        y: 1.1,
-        w: 11,
-        colW: [5.5, 5.5],
-        rowH: [0.4, 3.2, 3.2], // 헤더 작게, Task 행 크게 (총 4.35인치)
-        border: { pt: 1, color: '000000' },
-        fontSize: 12,
-        fontFace: 'Noto Sans KR',
-      });
-    }
+      if (!tasksByDisplayOrder.has(minDisplayOrder)) {
+        tasksByDisplayOrder.set(minDisplayOrder, []);
+      }
+      tasksByDisplayOrder.get(minDisplayOrder)!.push(task);
+    });
+
+    // displayOrder 순서대로 정렬
+    const sortedDisplayOrders = Array.from(tasksByDisplayOrder.keys()).sort((a, b) => a - b);
+
+    // 각 displayOrder 그룹별로 슬라이드 생성
+    sortedDisplayOrders.forEach((displayOrder) => {
+      const groupTasks = tasksByDisplayOrder.get(displayOrder)!;
+
+      // 해당 그룹의 Task를 2개씩 묶어서 슬라이드 생성
+      for (let i = 0; i < groupTasks.length; i += 2) {
+        const slide = pptx.addSlide();
+        this.addSlideHeader(slide, report);
+
+        // 테이블 데이터 생성 (2x3 그리드)
+        const tableRows: any[] = [];
+
+        // 헤더 행 (날짜)
+        tableRows.push([
+          {
+            text: `금주 (${weekStart}~${weekEnd}) 실적`,
+            options: {
+              fill: { color: '4F81BD' },
+              color: 'FFFFFF',
+              fontSize: 12,
+              fontFace: 'Noto Sans KR Medium',
+              align: 'center',
+              valign: 'middle',
+            },
+          },
+          {
+            text: `차주 (${this.formatDate(nextWeekStart)}~${this.formatDate(nextWeekEnd)}) 계획`,
+            options: {
+              fill: { color: '4F81BD' },
+              color: 'FFFFFF',
+              fontSize: 12,
+              fontFace: 'Noto Sans KR Medium',
+              align: 'center',
+              valign: 'middle',
+            },
+          },
+        ]);
+
+        // 첫 번째 Task 행
+        const task1 = groupTasks[i];
+        tableRows.push(this.createTaskRow(task1));
+
+        // 두 번째 Task 행 (있으면)
+        if (i + 1 < groupTasks.length) {
+          const task2 = groupTasks[i + 1];
+          tableRows.push(this.createTaskRow(task2));
+        } else {
+          // 두 번째 Task가 없으면 빈 행 추가
+          tableRows.push([
+            { text: '', options: {} },
+            { text: '', options: {} },
+          ]);
+        }
+
+        // 테이블 추가
+        slide.addTable(tableRows, {
+          x: 0.3,
+          y: 1.1,
+          w: 11,
+          colW: [5.5, 5.5],
+          rowH: [0.4, 3.2, 3.2], // 헤더 작게, Task 행 크게 (총 4.35인치)
+          border: { pt: 1, color: '000000' },
+          fontSize: 12,
+          fontFace: 'Noto Sans KR',
+        });
+      }
+    });
   }
 
   /**
@@ -305,36 +343,39 @@ export class PptExportService {
     }
 
     // 차주 계획 내용 (text runs 배열 사용)
-    const nextWeekTextRuns: any[] = [
-      // 모듈명 [대괄호 포함] + 제목 (Medium)
-      { text: `[${task.chain.name}] ${task.title}`, options: { fontSize: 12, fontFace: 'Noto Sans KR Medium', color: '000000', breakLine: true } },
-      // 목적 라벨 (Medium)
-      { text: '▪ 목적: ', options: { fontSize: 12, fontFace: 'Noto Sans KR Medium', color: '000000' } },
-      // 목적 내용 (일반)
-      { text: `${task.purpose || '-'}`, options: { fontSize: 12, color: '000000', breakLine: true } },
-      // 일정 라벨 (Medium)
-      { text: '▪ 일정: ', options: { fontSize: 12, fontFace: 'Noto Sans KR Medium', color: '000000' } },
-      // 일정 내용 (일반)
-      { text: `${taskStartDate} ~ ${taskEndDate}`, options: { fontSize: 12, color: '000000', breakLine: true } },
-      // 담당자 라벨 (Medium)
-      { text: '▪ 담당자: ', options: { fontSize: 12, fontFace: 'Noto Sans KR Medium', color: '000000' } },
-      // 담당자 내용 (일반)
-      { text: `${assigneeNames}`, options: { fontSize: 12, color: '000000', breakLine: true } },
-      // 수행계획 라벨 (Medium)
-      { text: '▪ 수행계획: ', options: { fontSize: 12, fontFace: 'Noto Sans KR Medium', color: '000000' } },
-    ];
+    // nextWeekContent가 비어있으면 빈칸으로 표시
+    let nextWeekTextRuns: any[] = [];
 
-    // 차주 개발 실적 (옵션에 따라 표시)
-    if (task.showNextWeekAchievement) {
-      nextWeekTextRuns.push({
-        text: ` [완료누계: ${task.nextCompletedCount || 0}, 총본수: ${task.nextTotalCount || 0}, 진척률: ${task.nextProgress || 0}%]`,
-        options: { fontSize: 12, color: '000000', breakLine: true },
-      });
-    } else {
-      nextWeekTextRuns.push({ text: '', options: { fontSize: 12, breakLine: true } });
-    }
+    if (task.nextWeekContent && task.nextWeekContent.trim() !== '') {
+      nextWeekTextRuns = [
+        // 모듈명 [대괄호 포함] + 제목 (Medium)
+        { text: `[${task.chain.name}] ${task.title}`, options: { fontSize: 12, fontFace: 'Noto Sans KR Medium', color: '000000', breakLine: true } },
+        // 목적 라벨 (Medium)
+        { text: '▪ 목적: ', options: { fontSize: 12, fontFace: 'Noto Sans KR Medium', color: '000000' } },
+        // 목적 내용 (일반)
+        { text: `${task.purpose || '-'}`, options: { fontSize: 12, color: '000000', breakLine: true } },
+        // 일정 라벨 (Medium)
+        { text: '▪ 일정: ', options: { fontSize: 12, fontFace: 'Noto Sans KR Medium', color: '000000' } },
+        // 일정 내용 (일반)
+        { text: `${taskStartDate} ~ ${taskEndDate}`, options: { fontSize: 12, color: '000000', breakLine: true } },
+        // 담당자 라벨 (Medium)
+        { text: '▪ 담당자: ', options: { fontSize: 12, fontFace: 'Noto Sans KR Medium', color: '000000' } },
+        // 담당자 내용 (일반)
+        { text: `${assigneeNames}`, options: { fontSize: 12, color: '000000', breakLine: true } },
+        // 수행계획 라벨 (Medium)
+        { text: '▪ 수행계획: ', options: { fontSize: 12, fontFace: 'Noto Sans KR Medium', color: '000000' } },
+      ];
 
-    if (task.nextWeekContent) {
+      // 차주 개발 실적 (옵션에 따라 표시)
+      if (task.showNextWeekAchievement) {
+        nextWeekTextRuns.push({
+          text: ` [완료누계: ${task.nextCompletedCount || 0}, 총본수: ${task.nextTotalCount || 0}, 진척률: ${task.nextProgress || 0}%]`,
+          options: { fontSize: 12, color: '000000', breakLine: true },
+        });
+      } else {
+        nextWeekTextRuns.push({ text: '', options: { fontSize: 12, breakLine: true } });
+      }
+
       const bullets = parseMarkdownToBullets(task.nextWeekContent);
       bullets.forEach((bullet) => {
         const indent = '  '.repeat(bullet.level + 1);
@@ -347,6 +388,9 @@ export class PptExportService {
           },
         });
       });
+    } else {
+      // nextWeekContent가 비어있으면 빈 배열 (빈칸)
+      nextWeekTextRuns = [{ text: '', options: {} }];
     }
 
     return [
@@ -608,7 +652,7 @@ export class PptExportService {
       leaveListText = thisWeekLeaves.map((att: any) => {
         const dateStr = this.formatShortDateRange(att.startDate, att.endDate);
         const leaveType = att.type?.name ? `${att.type.name} 휴가` : '';
-        return `${this.formatUserName(att.user)}(${dateStr}, ${leaveType})`;
+        return `${this.formatUserNameWithPosition(att.user)}(${dateStr}, ${leaveType})`;
       }).join(', ');
     }
 
@@ -655,10 +699,13 @@ export class PptExportService {
     const buildLeaveRow = (att?: any) => {
       const checks = att
         ? nextWeekDays.map((day) =>
-            this.isDateInRange(day, new Date(att.startDate), new Date(att.endDate)),
-          )
+          this.isDateInRange(day, new Date(att.startDate), new Date(att.endDate)),
+        )
         : nextWeekDays.map(() => false);
-      const leaveType = att?.type?.name ? `${att.type.name} 휴가` : '';
+      // content가 있으면 그것 사용 (예: refresh휴가(직책자)), 없으면 타입명 (예: 연차 휴가)
+      const leaveType = att?.content
+        ? att.content
+        : (att?.type?.name ? `${att.type.name} 휴가` : '');
       return [
         { text: leaveType, options: this.getCellStyle({ align: 'center' }) },
         { text: att ? this.formatUserName(att.user) : '', options: this.getCellStyle({ align: 'center' }) },

@@ -28,4 +28,7 @@ export class UpdateUserDto {
   @IsEnum(Position)
   @IsOptional()
   position?: Position;
+
+  @IsOptional()
+  displayOrder?: number;
 }

@@ -1,1 +1,0 @@
-poetry run python auto_login\main.py

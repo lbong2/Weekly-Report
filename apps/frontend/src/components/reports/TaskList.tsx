@@ -117,14 +117,23 @@ export function TaskList({ tasks, onEdit, onDelete, onFinishIssue, onPromoteIssu
               <p className="text-xs text-gray-500 mb-1">담당자</p>
               <div className="flex flex-wrap gap-1">
                 {task.assignees && task.assignees.length > 0 ? (
-                  task.assignees.map((assignee) => (
-                    <span
-                      key={assignee.id}
-                      className="inline-block px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded"
-                    >
-                      {assignee.user.name}
-                    </span>
-                  ))
+                  task.assignees.map((assignee) => {
+                    const positionColors =
+                      assignee.user.position === 'TEAM_LEAD'
+                        ? 'bg-purple-100 text-purple-800'
+                        : assignee.user.position === 'MANAGER'
+                        ? 'bg-blue-100 text-blue-800'
+                        : 'bg-gray-100 text-gray-800';
+
+                    return (
+                      <span
+                        key={assignee.id}
+                        className={`inline-block px-2 py-1 text-xs font-semibold rounded ${positionColors}`}
+                      >
+                        {assignee.user.name}
+                      </span>
+                    );
+                  })
                 ) : (
                   <span className="text-sm text-gray-400">-</span>
                 )}

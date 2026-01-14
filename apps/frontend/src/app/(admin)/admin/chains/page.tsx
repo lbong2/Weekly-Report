@@ -1,142 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import { chainsApi } from '@/lib/api/chains';
 import { Chain } from '@/types/models';
 import { CreateChainRequest, UpdateChainRequest } from '@/types/api';
 import { ChainFormModal } from '@/components/admin/ChainFormModal';
-
-// 드래그 가능한 행 컴포넌트
-function SortableRow({
-  chain,
-  onEdit,
-  onDelete,
-}: {
-  chain: Chain;
-  onEdit: (chain: Chain) => void;
-  onDelete: (chain: Chain) => void;
-}) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: chain.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
-  return (
-    <tr
-      ref={setNodeRef}
-      style={style}
-      className={`hover:bg-gray-50 ${isDragging ? 'bg-gray-100' : ''}`}
-    >
-      {/* 드래그 핸들 */}
-      <td className="px-4 py-4 whitespace-nowrap">
-        <button
-          {...attributes}
-          {...listeners}
-          className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600"
-        >
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 20 20"
-            fill="currentColor"
-          >
-            <circle cx="7" cy="5" r="1.5" />
-            <circle cx="13" cy="5" r="1.5" />
-            <circle cx="7" cy="10" r="1.5" />
-            <circle cx="13" cy="10" r="1.5" />
-            <circle cx="7" cy="15" r="1.5" />
-            <circle cx="13" cy="15" r="1.5" />
-          </svg>
-        </button>
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap">
-        <div className="text-sm font-medium text-gray-900">{chain.code}</div>
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap">
-        <div className="flex items-center gap-2">
-          <span
-            className="px-2 py-1 text-xs font-bold rounded"
-            style={{
-              backgroundColor: chain.color + '20',
-              color: chain.color,
-              border: `1.5px solid ${chain.color}`,
-            }}
-          >
-            {chain.name}
-          </span>
-        </div>
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap">
-        <div className="text-sm text-gray-900">{chain.displayOrder}</div>
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap">
-        {chain.isActive ? (
-          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-            활성
-          </span>
-        ) : (
-          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-            비활성
-          </span>
-        )}
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-        <button
-          onClick={() => onEdit(chain)}
-          className="text-blue-600 hover:text-blue-900 mr-4"
-        >
-          수정
-        </button>
-        <button
-          onClick={() => onDelete(chain)}
-          className="text-red-600 hover:text-red-900"
-        >
-          삭제
-        </button>
-      </td>
-    </tr>
-  );
-}
 
 export default function ChainsPage() {
   const [chains, setChains] = useState<Chain[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingChain, setEditingChain] = useState<Chain | null>(null);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
 
   useEffect(() => {
     loadData();
@@ -146,44 +20,12 @@ export default function ChainsPage() {
     try {
       setLoading(true);
       const chainsData = await chainsApi.getList({ isActive: undefined });
-      const sortedChains = chainsData.sort((a, b) => a.displayOrder - b.displayOrder);
-      setChains(sortedChains);
+      setChains(chainsData);
     } catch (err) {
       console.error('데이터 로드 실패:', err);
       alert('데이터를 불러오는데 실패했습니다.');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (over && active.id !== over.id) {
-      const oldIndex = chains.findIndex((c) => c.id === active.id);
-      const newIndex = chains.findIndex((c) => c.id === over.id);
-
-      // 배열 재정렬
-      const newChains = arrayMove(chains, oldIndex, newIndex);
-
-      // UI 즉시 업데이트
-      setChains(newChains);
-
-      try {
-        // displayOrder 재계산 및 백엔드 업데이트
-        await Promise.all(
-          newChains.map((chain, index) =>
-            chainsApi.update(chain.id, {
-              displayOrder: index + 1,
-            })
-          )
-        );
-      } catch (err) {
-        console.error('순서 업데이트 실패:', err);
-        alert('순서 변경에 실패했습니다.');
-        // 실패 시 다시 로드
-        loadData();
-      }
     }
   };
 
@@ -325,7 +167,7 @@ export default function ChainsPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">모듈 관리</h1>
           <p className="mt-1 text-sm text-gray-500">
-            총 {chains.length}개의 모듈 (드래그하여 순서 변경)
+            총 {chains.length}개의 모듈
           </p>
         </div>
         <div className="flex gap-3">
@@ -346,57 +188,78 @@ export default function ChainsPage() {
       </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  순서
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  코드
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  이름
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  정렬 순서
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  상태
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  관리
-                </th>
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                코드
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                이름
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                상태
+              </th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                관리
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {chains.map((chain) => (
+              <tr key={chain.id} className="hover:bg-gray-50">
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm font-medium text-gray-900">{chain.code}</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="px-2 py-1 text-xs font-bold rounded"
+                      style={{
+                        backgroundColor: chain.color + '20',
+                        color: chain.color,
+                        border: `1.5px solid ${chain.color}`,
+                      }}
+                    >
+                      {chain.name}
+                    </span>
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  {chain.isActive ? (
+                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                      활성
+                    </span>
+                  ) : (
+                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                      비활성
+                    </span>
+                  )}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <button
+                    onClick={() => handleEdit(chain)}
+                    className="text-blue-600 hover:text-blue-900 mr-4"
+                  >
+                    수정
+                  </button>
+                  <button
+                    onClick={() => handleDelete(chain)}
+                    className="text-red-600 hover:text-red-900"
+                  >
+                    삭제
+                  </button>
+                </td>
               </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              <SortableContext
-                items={chains.map((c) => c.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                {chains.map((chain) => (
-                  <SortableRow
-                    key={chain.id}
-                    chain={chain}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                  />
-                ))}
-              </SortableContext>
-            </tbody>
-          </table>
+            ))}
+          </tbody>
+        </table>
 
-          {chains.length === 0 && (
-            <div className="text-center py-12 text-gray-500">
-              등록된 모듈이 없습니다.
-            </div>
-          )}
-        </DndContext>
+        {chains.length === 0 && (
+          <div className="text-center py-12 text-gray-500">
+            등록된 모듈이 없습니다.
+          </div>
+        )}
       </div>
 
       <ChainFormModal

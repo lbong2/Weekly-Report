@@ -14,6 +14,7 @@ export interface User {
   role: Role;
   position: Position;
   teamId: string;
+  displayOrder: number;
   team: Team;
   createdAt: string;
   updatedAt: string;
@@ -88,6 +89,8 @@ export interface TaskAssignee {
     id: string;
     name: string;
     email: string;
+    displayOrder: number;
+    position: Position;
   };
 }
 

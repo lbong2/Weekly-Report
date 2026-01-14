@@ -29,13 +29,13 @@ export default function IssueList({ issues, onEdit, onDelete }: IssueListProps) 
             <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                     <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상태</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">모듈</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-64">제목</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">기간</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">진척률</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">담당자</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">관리</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20 whitespace-nowrap">상태</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24 whitespace-nowrap">모듈</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-80 whitespace-nowrap">제목</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48 whitespace-nowrap">기간</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32 whitespace-nowrap">진척률</th>
+                        <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-52 whitespace-nowrap">담당자</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-28 whitespace-nowrap">관리</th>
                     </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -48,15 +48,16 @@ export default function IssueList({ issues, onEdit, onDelete }: IssueListProps) 
                                         {status.label}
                                     </span>
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
+                                <td className="px-6 py-4">
                                     {issue.chain ? (
                                         <span
-                                            className="inline-block px-2 py-1 text-xs font-bold rounded"
+                                            className="inline-block px-2 py-1 text-xs font-bold rounded truncate max-w-full"
                                             style={{
                                                 backgroundColor: issue.chain.color + '20',
                                                 color: issue.chain.color,
                                                 border: `1.5px solid ${issue.chain.color}`
                                             }}
+                                            title={issue.chain.name}
                                         >
                                             {issue.chain.name}
                                         </span>
@@ -64,9 +65,15 @@ export default function IssueList({ issues, onEdit, onDelete }: IssueListProps) 
                                         <span className="text-sm text-gray-400">-</span>
                                     )}
                                 </td>
-                                <td className="px-6 py-4 text-sm text-gray-900 font-medium min-w-64">
-                                    {issue.title}
-                                    {issue.purpose && <p className="text-xs text-gray-500 mt-1 truncate max-w-2xl">{issue.purpose}</p>}
+                                <td className="px-6 py-4 text-sm text-gray-900 font-medium">
+                                    <div className="truncate max-w-xs" title={issue.title}>
+                                        {issue.title}
+                                    </div>
+                                    {issue.purpose && (
+                                        <p className="text-xs text-gray-500 mt-1 truncate max-w-xs" title={issue.purpose}>
+                                            {issue.purpose}
+                                        </p>
+                                    )}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                     {issue.startDate ? new Date(issue.startDate).toLocaleDateString() : '미정'} ~{' '}
@@ -83,13 +90,13 @@ export default function IssueList({ issues, onEdit, onDelete }: IssueListProps) 
                                         {issue.completedCount} / {issue.totalCount}
                                     </div>
                                 </td>
-                                <td className="px-6 py-4">
+                                <td className="px-3 py-4">
                                     <div className="flex flex-wrap gap-1">
                                         {issue.assignees && issue.assignees.length > 0 ? (
                                             issue.assignees.map((assignee) => (
                                                 <span
                                                     key={assignee.id}
-                                                    className={`inline-block px-2 py-1 text-xs rounded font-semibold ${assignee.user.position === 'TEAM_LEAD'
+                                                    className={`inline-block px-1.5 py-0.5 text-xs rounded font-semibold whitespace-nowrap ${assignee.user.position === 'TEAM_LEAD'
                                                         ? 'bg-purple-100 text-purple-800'
                                                         : assignee.user.position === 'MANAGER'
                                                             ? 'bg-blue-100 text-blue-800'

@@ -14,6 +14,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
 import auth
+from api_client import APIClient
 
 CONFIG_FILENAME = os.getenv("AUTO_LOGIN_CONFIG", "config.ini")
 
@@ -57,6 +58,10 @@ def _load_settings() -> dict:
         "auth_poll_delay": parser.getint("auth", "poll_delay", fallback=5),
         "auth_poll_retries": parser.getint("auth", "poll_retries", fallback=12),
         "headless": parser.getboolean("selenium", "headless", fallback=False),
+        # API 설정
+        "api_base_url": _required(parser, "api", "base_url"),
+        "api_email": _required(parser, "api", "email"),
+        "api_password": _required(parser, "api", "password"),
     }
 
 
@@ -98,19 +103,15 @@ def _fetch_auth_code(
 
 
 def _get_date_range() -> tuple[str, str]:
-    """오늘부터 다음달 말일까지 반환"""
+    """이번주 월요일부터 다음주 일요일까지 반환"""
     today = datetime.now()
-    # 다음달 말일 계산: 2달 후 1일에서 하루 빼기
-    if today.month == 11:
-        next_next_month = today.replace(year=today.year + 1, month=1, day=1)
-    elif today.month == 12:
-        next_next_month = today.replace(year=today.year + 1, month=2, day=1)
-    else:
-        next_next_month = today.replace(month=today.month + 2, day=1)
-    end_of_next_month = next_next_month - timedelta(days=1)
+    # 이번주 월요일 (weekday: 월=0, 화=1, ... 일=6)
+    this_monday = today - timedelta(days=today.weekday())
+    # 다음주 일요일 (이번주 월요일 + 13일)
+    next_sunday = this_monday + timedelta(days=13)
     return (
-        today.strftime("%Y-%m-%d 00:00"),
-        end_of_next_month.strftime("%Y-%m-%d 23:59"),
+        this_monday.strftime("%Y-%m-%d 00:00"),
+        next_sunday.strftime("%Y-%m-%d 23:59"),
     )
 
 
@@ -168,12 +169,13 @@ def _fetch_team_schedule(driver: webdriver.Chrome) -> list:
 
 
 def _filter_bracket_schedules(schedule_data: list) -> list:
-    """대괄호로 시작하는 일정만 필터링 (휴가, 출장 등)"""
+    """대괄호로 시작하는 일정만 필터링 (휴가, 출장 등), 교육 제외"""
     results = []
     for member in schedule_data:
         for event in member.get("scheduleViewList", []):
             summary = event.get("summary", "")
-            if summary.startswith("["):
+            # 대괄호로 시작하고, 교육이 아닌 것만
+            if summary.startswith("[") and not summary.startswith("[교육]"):
                 results.append({
                     "memberId": member.get("memberId"),
                     "summary": summary,
@@ -182,6 +184,180 @@ def _filter_bracket_schedules(schedule_data: list) -> list:
                     "scheduleType": event.get("scheduleType"),
                 })
     return results
+
+
+def _parse_schedule_type(summary: str) -> str:
+    """일정 제목에서 타입 추출 (예: [휴가], [출장])"""
+    if not summary.startswith("["):
+        return ""
+    try:
+        return summary.split("]")[0][1:]  # [휴가] -> 휴가
+    except IndexError:
+        return ""
+
+
+def _parse_user_name(summary: str) -> str:
+    """일정 제목에서 사용자 이름 추출 (예: [휴가]-손병진 -> 손병진)"""
+    # 패턴: [타입]내용-이름 또는 [타입]-이름
+    if "-" not in summary:
+        return ""
+    # 마지막 - 뒤의 텍스트가 이름
+    return summary.split("-")[-1].strip()
+
+
+def _parse_schedule_content(summary: str) -> str:
+    """일정 제목에서 내용 추출 (예: [출장]스틸샵 시스템 업무 협의-이경봉 -> 스틸샵 시스템 업무 협의)"""
+    # 패턴: [타입]내용-이름
+    if "]" not in summary or "-" not in summary:
+        return ""
+    
+    # ] 다음부터 마지막 - 전까지 추출
+    try:
+        after_bracket = summary.split("]", 1)[1]  # [출장]스틸샵... -> 스틸샵...
+        # 마지막 - 앞까지가 내용
+        parts = after_bracket.rsplit("-", 1)  # 마지막 -로 split
+        if len(parts) == 2:
+            content = parts[0].strip()
+            return content if content else ""
+    except (IndexError, AttributeError):
+        pass
+    
+    return ""
+
+
+def _extract_date_only(datetime_str: str) -> str:
+    """날짜/시간 문자열에서 날짜만 추출 (YYYY-MM-DD)"""
+    # "2025-11-13 13:00" -> "2025-11-13"
+    return datetime_str.split()[0] if " " in datetime_str else datetime_str
+
+
+def _map_type_to_attendance_type(schedule_type: str, attendance_types: list) -> str | None:
+    """일정 타입을 AttendanceType code로 매핑"""
+    # 휴가 계열 -> ANNUAL
+    if schedule_type in ["휴가", "반차", "반반차"]:
+        for t in attendance_types:
+            if t["code"] == "ANNUAL":
+                return t["id"]
+    # 출장/외근 -> BUSINESS_TRIP
+    elif schedule_type in ["출장", "외근"]:
+        for t in attendance_types:
+            if t["code"] == "BUSINESS_TRIP":
+                return t["id"]
+    return None
+
+
+def _create_attendance_payload(
+    user_id: str,
+    type_id: str,
+    start_date: str,
+    end_date: str,
+    content: str | None = None,
+) -> dict:
+    """Attendance 생성 API 페이로드 생성"""
+    return {
+        "userId": user_id,
+        "typeId": type_id,
+        "startDate": _extract_date_only(start_date),
+        "endDate": _extract_date_only(end_date),
+        "content": content,
+    }
+
+
+def _register_attendances(
+    filtered_schedules: list,
+    api_client: APIClient,
+    start_date: str,
+    end_date: str,
+) -> dict:
+    """
+    필터링된 일정을 백엔드 API로 등록.
+    
+    1. 먼저 해당 기간의 모든 Attendance 삭제
+    2. 새로운 일정을 등록
+    
+    Returns:
+        통계 정보 (deleted, success, failed, skipped)
+    """
+    print("\n" + "=" * 60)
+    print("[registration] Starting attendance registration...")
+    print("=" * 60)
+    
+    # 1. 기간별 일괄 삭제
+    try:
+        deleted_count = api_client.delete_attendances_in_range(start_date, end_date)
+    except Exception as e:
+        print(f"[registration] ⚠️  Failed to delete existing attendances: {e}")
+        deleted_count = 0
+    
+    # 2. 사용자 및 타입 정보 조회
+    print("\n[registration] Fetching users and attendance types...")
+    try:
+        users = api_client.get_users()
+        attendance_types = api_client.get_attendance_types()
+    except Exception as e:
+        print(f"[registration] ❌ Failed to fetch metadata: {e}")
+        return {"deleted": deleted_count, "success": 0, "failed": 0, "skipped": 0}
+    
+    # 사용자명 -> userId 매핑
+    user_map = {user["name"]: user["id"] for user in users}
+    print(f"[registration] User mapping: {len(user_map)} users")
+    
+    # 3. 일정 등록
+    stats = {"deleted": deleted_count, "success": 0, "failed": 0, "skipped": 0}
+    print(f"\n[registration] Registering {len(filtered_schedules)} schedules...")
+    
+    for i, schedule in enumerate(filtered_schedules, 1):
+        summary = schedule["summary"]
+        start_date_str = schedule["startDate"]
+        end_date_str = schedule["endDate"]
+        
+        # 파싱
+        schedule_type = _parse_schedule_type(summary)
+        user_name = _parse_user_name(summary)
+        schedule_content = _parse_schedule_content(summary)  # 출장 내용, 휴가 세부사항 등
+        
+        # 사용자 매칭
+        user_id = user_map.get(user_name)
+        if not user_id:
+            print(f"[{i}/{len(filtered_schedules)}] ⚠️  User not found: {user_name} ({summary})")
+            stats["skipped"] += 1
+            continue
+        
+        # 타입 매핑
+        type_id = _map_type_to_attendance_type(schedule_type, attendance_types)
+        if not type_id:
+            print(f"[{i}/{len(filtered_schedules)}] ⚠️  Unknown type: {schedule_type} ({summary})")
+            stats["skipped"] += 1
+            continue
+        
+        # content: 일정 내용만 (출장 목적, 휴가 세부사항 등)
+        content = schedule_content if schedule_content else None
+        
+        # 페이로드 생성
+        payload = _create_attendance_payload(
+            user_id, type_id, start_date_str, end_date_str, content
+        )
+        
+        # API 호출
+        result = api_client.create_attendance_with_retry(payload)
+        if result:
+            if i % 10 == 0 or i == len(filtered_schedules):
+                print(f"[{i}/{len(filtered_schedules)}] ✅ {user_name}: {schedule_type} ({start_date_str} ~ {end_date_str})")
+            stats["success"] += 1
+        else:
+            print(f"[{i}/{len(filtered_schedules)}] ❌ Failed: {summary}")
+            stats["failed"] += 1
+    
+    # 최종 통계
+    print("\n" + "=" * 60)
+    print("[registration] Registration complete!")
+    print(f"  Deleted:  {stats['deleted']} existing attendances")
+    print(f"  Success:  {stats['success']} attendances created")
+    print(f"  Failed:   {stats['failed']} attendances")
+    print(f"  Skipped:  {stats['skipped']} attendances (user/type not found)")
+    print("=" * 60)
+    
+    return stats
 
 
 def _input_credentials(driver: webdriver.Chrome, wait: WebDriverWait, settings: dict) -> None:
@@ -210,6 +386,7 @@ def main() -> None:
         chrome_options.add_argument("--window-size=1920,1080")
         chrome_options.add_argument("--disable-gpu")
         chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
     print(f"[iris] 브라우저 옵션 설정 완료 (headless={settings['headless']})")
 
     iris_driver = webdriver.Chrome(options=chrome_options)
@@ -268,10 +445,39 @@ def main() -> None:
             break
     print("[calendar] 새 탭으로 전환 완료")
 
-    # calendar.worksmobile.com 페이지 로드 대기
-    WebDriverWait(iris_driver, 30).until(
-        lambda d: "calendar.worksmobile.com" in d.current_url
-    )
+    # calendar.worksmobile.com 페이지 로드 대기 (팝업 처리 포함)
+    def wait_for_calendar_page(driver):
+        """팝업이나 다중 윈도우를 처리하며 calendar 페이지를 찾음"""
+        end_time = time.time() + 30
+        while time.time() < end_time:
+            try:
+                # 현재 윈도우에서 URL 확인
+                if "calendar.worksmobile.com" in driver.current_url:
+                    return True
+            except Exception:
+                # 현재 윈도우가 닫혔거나 접근 불가
+                pass
+
+            # 모든 열린 윈도우를 확인
+            try:
+                handles = driver.window_handles
+                for handle in handles:
+                    try:
+                        driver.switch_to.window(handle)
+                        if "calendar.worksmobile.com" in driver.current_url:
+                            print(f"[calendar] calendar 페이지 발견 (윈도우 전환)")
+                            return True
+                    except Exception:
+                        # 이 윈도우는 접근 불가, 다음 윈도우 확인
+                        continue
+            except Exception:
+                pass
+
+            time.sleep(0.5)
+
+        raise TimeoutError("calendar.worksmobile.com 페이지를 찾을 수 없습니다")
+
+    wait_for_calendar_page(iris_driver)
     print(f"[calendar] 캘린더 페이지 로드 완료: {iris_driver.current_url}")
 
     # 캘린더 일정 조회
@@ -284,6 +490,32 @@ def main() -> None:
         for item in filtered:
             print(f"  {item['summary']} | {item['startDate']} ~ {item['endDate']}")
         print("=" * 60)
+        
+        # API 클라이언트 초기화 및 등록
+        if filtered:
+            print("\n[api] Initializing API client...")
+            try:
+                api_client = APIClient(
+                    settings["api_base_url"],
+                    settings["api_email"],
+                    settings["api_password"],
+                )
+                api_client.login()
+                
+                # 조회 기간 가져오기
+                view_from, view_until = _get_date_range()
+                start_date = view_from.split()[0]  # "YYYY-MM-DD HH:MM" -> "YYYY-MM-DD"
+                end_date = view_until.split()[0]
+                
+                # 등록 실행
+                _register_attendances(filtered, api_client, start_date, end_date)
+            except Exception as e:
+                print(f"\n[api] ❌ API registration failed: {e}")
+                import traceback
+                traceback.print_exc()
+        else:
+            print("\n[calendar] No schedules to register")
+            
     except Exception as e:
         print(f"[calendar] 조회 실패: {e}")
 

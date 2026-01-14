@@ -34,6 +34,7 @@ export interface CreateUserRequest {
   teamId: string;
   role?: Role;
   position?: Position;
+  displayOrder?: number;
 }
 
 export interface UpdateUserRequest {
@@ -43,6 +44,7 @@ export interface UpdateUserRequest {
   teamId?: string;
   role?: Role;
   position?: Position;
+  displayOrder?: number;
 }
 
 // 팀
