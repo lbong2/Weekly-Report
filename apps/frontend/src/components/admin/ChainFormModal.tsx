@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Chain } from '@/types/models';
+import { Chain, User, ChainAssignee } from '@/types/models';
 import { CreateChainRequest, UpdateChainRequest } from '@/types/api';
+import { usersApi } from '@/lib/api/users';
 
 // 색상 휠에서 균등하게 분포된 대비 색상 생성
 const generateDistinctColors = (count: number): string[] => {
@@ -73,9 +74,12 @@ export function ChainFormModal({
     color: '#3B82F6',
     displayOrder: 0,
     isActive: true,
+    assigneeIds: [] as string[],
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
 
   // 사용 중인 색상을 피해 새로운 색상 자동 선정
   const handleAutoColor = () => {
@@ -94,6 +98,24 @@ export function ChainFormModal({
     setFormData({ ...formData, color: newColor });
   };
 
+  // 사용자 목록 로드
+  useEffect(() => {
+    const loadUsers = async () => {
+      setUsersLoading(true);
+      try {
+        const data = await usersApi.getList();
+        setUsers(data);
+      } catch (err) {
+        console.error('사용자 목록 로드 실패:', err);
+      } finally {
+        setUsersLoading(false);
+      }
+    };
+    if (isOpen) {
+      loadUsers();
+    }
+  }, [isOpen]);
+
   useEffect(() => {
     if (!isOpen) return;
 
@@ -104,6 +126,7 @@ export function ChainFormModal({
         color: editChain.color,
         displayOrder: editChain.displayOrder ?? 0,
         isActive: editChain.isActive,
+        assigneeIds: editChain.assignees?.map((a: ChainAssignee) => a.userId) ?? [],
       });
     } else {
       // 신규 생성 시 기존 Chain 개수 + 1을 기본 displayOrder로 설정
@@ -117,6 +140,7 @@ export function ChainFormModal({
         color: '#3B82F6',
         displayOrder: maxDisplayOrder + 1,
         isActive: true,
+        assigneeIds: [],
       });
     }
     setError(null);
@@ -272,6 +296,53 @@ export function ChainFormModal({
                 <label htmlFor="isActive" className="ml-2 block text-sm text-gray-900">
                   활성
                 </label>
+              </div>
+
+              {/* 담당자 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  담당자
+                </label>
+                {usersLoading ? (
+                  <p className="text-sm text-gray-500">사용자 목록 로딩 중...</p>
+                ) : (
+                  <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-md p-2 space-y-1">
+                    {users.length === 0 ? (
+                      <p className="text-sm text-gray-500">등록된 사용자가 없습니다.</p>
+                    ) : (
+                      users.map((user) => (
+                        <label
+                          key={user.id}
+                          className="flex items-center gap-2 p-1 hover:bg-gray-50 rounded cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={formData.assigneeIds.includes(user.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setFormData({
+                                  ...formData,
+                                  assigneeIds: [...formData.assigneeIds, user.id],
+                                });
+                              } else {
+                                setFormData({
+                                  ...formData,
+                                  assigneeIds: formData.assigneeIds.filter((id) => id !== user.id),
+                                });
+                              }
+                            }}
+                            className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                          />
+                          <span className="text-sm text-gray-900">{user.name}</span>
+                          <span className="text-xs text-gray-500">({user.email})</span>
+                        </label>
+                      ))
+                    )}
+                  </div>
+                )}
+                <p className="mt-1 text-xs text-gray-500">
+                  이 모듈의 담당자를 선택하세요 (복수 선택 가능)
+                </p>
               </div>
             </div>
 

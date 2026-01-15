@@ -1,4 +1,4 @@
-import { IsString, IsBoolean, IsOptional, IsInt, Matches } from 'class-validator';
+import { IsString, IsBoolean, IsOptional, IsInt, Matches, IsArray, IsUUID } from 'class-validator';
 
 export class UpdateChainDto {
   @IsString()
@@ -23,4 +23,9 @@ export class UpdateChainDto {
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;
+
+  @IsArray()
+  @IsUUID('4', { each: true })
+  @IsOptional()
+  assigneeIds?: string[];
 }

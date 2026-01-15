@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsBoolean, IsOptional, IsInt, Matches } from 'class-validator';
+import { IsNotEmpty, IsString, IsBoolean, IsOptional, IsInt, Matches, IsArray, IsUUID } from 'class-validator';
 
 export class CreateChainDto {
   @IsString()
@@ -23,4 +23,9 @@ export class CreateChainDto {
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;
+
+  @IsArray()
+  @IsUUID('4', { each: true })
+  @IsOptional()
+  assigneeIds?: string[];
 }

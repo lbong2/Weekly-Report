@@ -50,6 +50,7 @@ model User {
   tasks       TaskAssignee[]
   attendances Attendance[]
   issueAssignees IssueAssignee[]
+  chainAssignees ChainAssignee[]
 
   @@map("users")
 }
@@ -81,8 +82,21 @@ model Chain {
 
   tasks Task[]
   issues Issue[]
+  assignees ChainAssignee[]
 
   @@map("chains")
+}
+
+model ChainAssignee {
+  id      String @id @default(uuid())
+  chainId String @map("chain_id")
+  userId  String @map("user_id")
+
+  chain Chain @relation(fields: [chainId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id])
+
+  @@unique([chainId, userId])
+  @@map("chain_assignees")
 }
 
 model WeeklyReport {

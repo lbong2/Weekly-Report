@@ -27,6 +27,8 @@ ALTER TABLE IF EXISTS ONLY public.issues DROP CONSTRAINT IF EXISTS issues_team_i
 ALTER TABLE IF EXISTS ONLY public.issues DROP CONSTRAINT IF EXISTS issues_chain_id_fkey;
 ALTER TABLE IF EXISTS ONLY public.issue_assignees DROP CONSTRAINT IF EXISTS issue_assignees_user_id_fkey;
 ALTER TABLE IF EXISTS ONLY public.issue_assignees DROP CONSTRAINT IF EXISTS issue_assignees_issue_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.chain_assignees DROP CONSTRAINT IF EXISTS chain_assignees_user_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.chain_assignees DROP CONSTRAINT IF EXISTS chain_assignees_chain_id_fkey;
 ALTER TABLE IF EXISTS ONLY public.attendances DROP CONSTRAINT IF EXISTS attendances_user_id_fkey;
 ALTER TABLE IF EXISTS ONLY public.attendances DROP CONSTRAINT IF EXISTS attendances_type_id_fkey;
 DROP INDEX IF EXISTS public.weekly_reports_team_id_year_week_number_key;
@@ -34,6 +36,7 @@ DROP INDEX IF EXISTS public.users_email_key;
 DROP INDEX IF EXISTS public.task_assignees_task_id_user_id_key;
 DROP INDEX IF EXISTS public.issue_assignees_issue_id_user_id_key;
 DROP INDEX IF EXISTS public.chains_code_key;
+DROP INDEX IF EXISTS public.chain_assignees_chain_id_user_id_key;
 DROP INDEX IF EXISTS public.attendance_types_code_key;
 ALTER TABLE IF EXISTS ONLY public.weekly_reports DROP CONSTRAINT IF EXISTS weekly_reports_pkey;
 ALTER TABLE IF EXISTS ONLY public.users DROP CONSTRAINT IF EXISTS users_pkey;
@@ -43,6 +46,7 @@ ALTER TABLE IF EXISTS ONLY public.task_assignees DROP CONSTRAINT IF EXISTS task_
 ALTER TABLE IF EXISTS ONLY public.issues DROP CONSTRAINT IF EXISTS issues_pkey;
 ALTER TABLE IF EXISTS ONLY public.issue_assignees DROP CONSTRAINT IF EXISTS issue_assignees_pkey;
 ALTER TABLE IF EXISTS ONLY public.chains DROP CONSTRAINT IF EXISTS chains_pkey;
+ALTER TABLE IF EXISTS ONLY public.chain_assignees DROP CONSTRAINT IF EXISTS chain_assignees_pkey;
 ALTER TABLE IF EXISTS ONLY public.attendances DROP CONSTRAINT IF EXISTS attendances_pkey;
 ALTER TABLE IF EXISTS ONLY public.attendance_types DROP CONSTRAINT IF EXISTS attendance_types_pkey;
 ALTER TABLE IF EXISTS ONLY public._prisma_migrations DROP CONSTRAINT IF EXISTS _prisma_migrations_pkey;
@@ -54,6 +58,7 @@ DROP TABLE IF EXISTS public.task_assignees;
 DROP TABLE IF EXISTS public.issues;
 DROP TABLE IF EXISTS public.issue_assignees;
 DROP TABLE IF EXISTS public.chains;
+DROP TABLE IF EXISTS public.chain_assignees;
 DROP TABLE IF EXISTS public.attendances;
 DROP TABLE IF EXISTS public.attendance_types;
 DROP TABLE IF EXISTS public._prisma_migrations;
@@ -184,6 +189,19 @@ CREATE TABLE public.attendances (
 
 
 ALTER TABLE public.attendances OWNER TO postgres;
+
+--
+-- Name: chain_assignees; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.chain_assignees (
+    id text NOT NULL,
+    chain_id text NOT NULL,
+    user_id text NOT NULL
+);
+
+
+ALTER TABLE public.chain_assignees OWNER TO postgres;
 
 --
 -- Name: chains; Type: TABLE; Schema: public; Owner: postgres
@@ -352,6 +370,7 @@ aeb2bc04-3b2b-4665-8acf-4ec55386f0c0	e0edaf2570e9b3849fe3b20a01b9541e747eec4a141
 146bfd00-292d-4427-a2e6-2abf38da7811	36de684b8d14b37ecc6c2574788a6cf2011c61e7011808aa2843651ab87b4fcf	2026-01-11 03:40:32.729782+00	20260111034032_add_chain_color	\N	\N	2026-01-11 03:40:32.722026+00	1
 06a42973-52bd-4e43-bd8e-59f67c92c93c	b0aaed5814b2539ade078dc0e7c5d42f83c129c2d2991d4c8bd903dbeb764a66	2026-01-11 05:00:43.318402+00	20260111050043_add_chain_display_order	\N	\N	2026-01-11 05:00:43.313066+00	1
 786d42a7-e74b-4ec0-b687-85cd597cd5ba	b44d686354911e39d1b198637a9e5a5dd5ee86d706cd852654bac921f0dc909f	2026-01-14 12:01:21.25492+00	20260114120121_add_user_display_order	\N	\N	2026-01-14 12:01:21.246701+00	1
+fc4ee408-b87e-4003-bc0f-bf18eedbaf2b	4217faff10462360327ba37f2a9a13609f907115fbedc7462ab2b825bddeb57c	2026-01-15 10:57:22.547879+00	20260115105722_add_chain_assignees	\N	\N	2026-01-15 10:57:22.507044+00	1
 \.
 
 
@@ -384,20 +403,39 @@ e7fafa78-ba11-40bd-9494-5de478fedc93	1f979db3-aed5-48af-a952-c3824fef3012	45d0a3
 
 
 --
+-- Data for Name: chain_assignees; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.chain_assignees (id, chain_id, user_id) FROM stdin;
+32145107-7d2d-4eb2-9819-8fd6ad2af3a1	af3a54f3-797d-4fd4-b40d-5a14a1012f22	e9dd149f-6f1d-4a98-82b8-8b6dac68ad4a
+59ddb9f0-8dff-4235-8084-6b148593d7a2	1a3b7b4e-786c-4d0a-b225-745d52cedff7	86facd65-2ea0-423d-9d77-0885e739293c
+2f9bd208-1d51-489e-a1e3-a70221a44f43	1a3b7b4e-786c-4d0a-b225-745d52cedff7	fe4ba50f-7dc0-42e4-9541-536d0b6e0d9a
+cccbe406-e102-4fbf-809c-50bc562c600b	256fd53f-17f8-4c7b-8200-3406da8e7148	17ba60b8-4237-4496-bc19-b71f88edc44f
+be9e00f2-fb00-40b4-aac8-6a3d95c5bfe9	9edb5989-98f6-474f-b7ab-f1dafda636e9	575d1267-2341-4dd8-a622-787403eb5772
+c4827052-6f56-423f-92de-e83dd89a7a3d	206996ae-0336-4485-969d-e23cb2c5a38d	fb1b8e68-e3ed-46b5-a5f1-f43a19594ffb
+6a507111-eeb5-4c78-a7f9-94315e422762	69f7450c-4754-419e-abaf-97f3011feeda	aeb33f27-3b22-48a9-81f8-8414be744a76
+fa81a2c0-e56e-4aad-bd1a-ad46524b2895	047d4be9-a928-4b75-aea4-a7c346895df5	335c9b09-ce76-49a8-b18a-96b638213a45
+3963a2ba-68e7-48a1-8cfa-232ce6720bdf	1acadd61-22de-4f72-807c-421f49c2138f	335c9b09-ce76-49a8-b18a-96b638213a45
+07fae021-740b-483f-8ada-0ff7fe205008	8ce7b0ef-3be5-4108-a062-249082bff464	335c9b09-ce76-49a8-b18a-96b638213a45
+49cd7bcd-19f0-4ba4-ba44-73b8a4cc2a45	c6cb07ae-bcee-413c-b495-5c5099884665	86facd65-2ea0-423d-9d77-0885e739293c
+\.
+
+
+--
 -- Data for Name: chains; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public.chains (id, code, name, is_active, created_at, updated_at, color, display_order) FROM stdin;
-af3a54f3-797d-4fd4-b40d-5a14a1012f22	MQC	품질관리	t	2026-01-10 12:31:14.702	2026-01-14 13:02:06.138	#B81414	1
-256fd53f-17f8-4c7b-8200-3406da8e7148	MLS	물류관리	t	2026-01-10 12:30:54.923	2026-01-14 13:02:06.142	#B87614	2
-1a3b7b4e-786c-4d0a-b225-745d52cedff7	MPP	조업관리	t	2026-01-08 09:48:18.122	2026-01-14 13:02:06.15	#97B814	3
-9edb5989-98f6-474f-b7ab-f1dafda636e9	MBH	D-Mega Beam	t	2026-01-08 09:48:18.106	2026-01-14 13:02:06.159	#35B814	4
-206996ae-0336-4485-969d-e23cb2c5a38d	APS	공정계획	t	2026-01-08 09:48:18.116	2026-01-14 13:02:06.166	#14B856	5
-69f7450c-4754-419e-abaf-97f3011feeda	MST	검사증명서	t	2026-01-11 04:39:58.456	2026-01-14 13:02:06.166	#14B8B8	6
-047d4be9-a928-4b75-aea4-a7c346895df5	WGT	계량	t	2026-01-11 04:40:41.754	2026-01-14 13:02:06.171	#1456B8	7
-1acadd61-22de-4f72-807c-421f49c2138f	MPR	조업진행 Report	t	2026-01-08 09:48:18.128	2026-01-14 13:02:06.176	#3514B8	8
-8ce7b0ef-3be5-4108-a062-249082bff464	MCM	공통관리	t	2026-01-11 04:40:13.628	2026-01-14 13:02:06.176	#9714B8	9
-c6cb07ae-bcee-413c-b495-5c5099884665	SCRP	스크랩검수	t	2026-01-14 13:02:02.85	2026-01-14 13:02:06.179	#B81476	10
+af3a54f3-797d-4fd4-b40d-5a14a1012f22	MQC	품질관리	t	2026-01-10 12:31:14.702	2026-01-15 11:09:17.466	#B81414	1
+1a3b7b4e-786c-4d0a-b225-745d52cedff7	MPP	조업관리	t	2026-01-08 09:48:18.122	2026-01-15 11:09:21.871	#97B814	2
+256fd53f-17f8-4c7b-8200-3406da8e7148	MLS	물류관리	t	2026-01-10 12:30:54.923	2026-01-15 11:09:28.135	#B87614	3
+9edb5989-98f6-474f-b7ab-f1dafda636e9	MBH	D-Mega Beam	t	2026-01-08 09:48:18.106	2026-01-15 11:09:32.894	#35B814	4
+206996ae-0336-4485-969d-e23cb2c5a38d	APS	공정계획	t	2026-01-08 09:48:18.116	2026-01-15 11:09:39.364	#14B856	5
+69f7450c-4754-419e-abaf-97f3011feeda	MST	검사증명서	t	2026-01-11 04:39:58.456	2026-01-15 11:09:44.537	#14B8B8	6
+047d4be9-a928-4b75-aea4-a7c346895df5	WGT	계량	t	2026-01-11 04:40:41.754	2026-01-15 11:09:49.464	#1456B8	7
+1acadd61-22de-4f72-807c-421f49c2138f	MPR	조업진행 Report	t	2026-01-08 09:48:18.128	2026-01-15 11:09:54.566	#3514B8	8
+8ce7b0ef-3be5-4108-a062-249082bff464	MCM	공통관리	t	2026-01-11 04:40:13.628	2026-01-15 11:09:59.388	#9714B8	9
+c6cb07ae-bcee-413c-b495-5c5099884665	SCRP	스크랩검수	t	2026-01-14 13:02:02.85	2026-01-15 11:10:02.968	#B81476	10
 \.
 
 
@@ -572,6 +610,14 @@ ALTER TABLE ONLY public.attendances
 
 
 --
+-- Name: chain_assignees chain_assignees_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.chain_assignees
+    ADD CONSTRAINT chain_assignees_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: chains chains_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -643,6 +689,13 @@ CREATE UNIQUE INDEX attendance_types_code_key ON public.attendance_types USING b
 
 
 --
+-- Name: chain_assignees_chain_id_user_id_key; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX chain_assignees_chain_id_user_id_key ON public.chain_assignees USING btree (chain_id, user_id);
+
+
+--
 -- Name: chains_code_key; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -691,6 +744,22 @@ ALTER TABLE ONLY public.attendances
 
 ALTER TABLE ONLY public.attendances
     ADD CONSTRAINT attendances_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: chain_assignees chain_assignees_chain_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.chain_assignees
+    ADD CONSTRAINT chain_assignees_chain_id_fkey FOREIGN KEY (chain_id) REFERENCES public.chains(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: chain_assignees chain_assignees_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.chain_assignees
+    ADD CONSTRAINT chain_assignees_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON UPDATE CASCADE ON DELETE RESTRICT;
 
 
 --

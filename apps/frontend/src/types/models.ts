@@ -36,8 +36,22 @@ export interface Chain {
   color: string;
   displayOrder: number;
   isActive: boolean;
+  assignees?: ChainAssignee[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ChainAssignee {
+  id: string;
+  chainId: string;
+  userId: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    position: Position;
+    displayOrder: number;
+  };
 }
 
 export interface WeeklyReport {

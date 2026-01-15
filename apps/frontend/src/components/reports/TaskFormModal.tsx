@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { chainsApi } from '@/lib/api/chains';
 import { usersApi } from '@/lib/api/users';
+import { useAuth } from '@/lib/hooks/useAuth';
 import type { Task, Chain, User, CreateTaskRequest } from '@/types';
 
 interface TaskFormModalProps {
@@ -23,9 +24,12 @@ export function TaskFormModal({
   weeklyReportId,
   editTask,
 }: TaskFormModalProps) {
+  const { user: currentUser } = useAuth();
   const [chains, setChains] = useState<Chain[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isAssigneeDropdownOpen, setIsAssigneeDropdownOpen] = useState(false);
+  const assigneeDropdownRef = useRef<HTMLDivElement>(null);
 
   const [formData, setFormData] = useState<CreateTaskRequest>({
     weeklyReportId,
@@ -51,8 +55,31 @@ export function TaskFormModal({
   useEffect(() => {
     if (isOpen) {
       loadData();
+    } else {
+      // 모달이 닫힐 때 드롭다운도 닫기
+      setIsAssigneeDropdownOpen(false);
     }
   }, [isOpen]);
+
+  // 드롭다운 외부 클릭 시 닫기
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        assigneeDropdownRef.current &&
+        !assigneeDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsAssigneeDropdownOpen(false);
+      }
+    };
+
+    if (isAssigneeDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isAssigneeDropdownOpen]);
 
   // 수정 모드일 때 폼 데이터 채우기
   useEffect(() => {
@@ -98,9 +125,26 @@ export function TaskFormModal({
         return `${year}-${month}-${day}`;
       };
 
+      // 현재 사용자가 담당하는 모듈 중 displayOrder가 가장 빠른 모듈 찾기
+      let defaultChainId = '';
+      if (currentUser && chains.length > 0) {
+        const userAssignedChains = chains
+          .filter((chain) =>
+            chain.assignees?.some((assignee) => assignee.userId === currentUser.id)
+          )
+          .sort((a, b) => a.displayOrder - b.displayOrder);
+
+        if (userAssignedChains.length > 0) {
+          defaultChainId = userAssignedChains[0].id;
+        }
+      }
+
+      // 현재 사용자를 담당자 기본값으로 설정
+      const defaultAssigneeIds = currentUser ? [currentUser.id] : [];
+
       setFormData({
         weeklyReportId,
-        chainId: '',
+        chainId: defaultChainId,
         title: '',
         purpose: '',
         startDate: formatDate(firstDay),
@@ -115,10 +159,10 @@ export function TaskFormModal({
         nextProgress: 0,
         showNextWeekAchievement: true,
         showThisWeekAchievement: true,
-        assigneeIds: [],
+        assigneeIds: defaultAssigneeIds,
       });
     }
-  }, [isOpen, editTask, weeklyReportId]);
+  }, [isOpen, editTask, weeklyReportId, chains, currentUser]);
 
   const loadData = async () => {
     try {
@@ -170,7 +214,7 @@ export function TaskFormModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
         {/* 헤더 */}
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
           <h2 className="text-xl font-semibold">
@@ -272,223 +316,268 @@ export function TaskFormModal({
           </div>
 
           {/* 담당자 */}
-          <div>
+          <div className="relative" ref={assigneeDropdownRef}>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               담당자
             </label>
-            <div className="border border-gray-300 rounded-md p-3 max-h-40 overflow-y-auto">
-              {users.map((user) => (
-                <label
-                  key={user.id}
-                  className="flex items-center space-x-2 mb-2 cursor-pointer hover:bg-gray-50 p-2 rounded"
-                >
+            {/* 선택된 담당자 표시 및 드롭다운 토글 */}
+            <div
+              onClick={() => setIsAssigneeDropdownOpen(!isAssigneeDropdownOpen)}
+              className="w-full min-h-[42px] px-3 py-2 border border-gray-300 rounded-md cursor-pointer bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+            >
+              <div className="flex flex-wrap gap-1 flex-1">
+                {formData.assigneeIds && formData.assigneeIds.length > 0 ? (
+                  formData.assigneeIds.map((userId) => {
+                    const user = users.find((u) => u.id === userId);
+                    return user ? (
+                      <span
+                        key={userId}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-800 text-sm rounded"
+                      >
+                        {user.name}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAssigneeToggle(userId);
+                          }}
+                          className="text-blue-600 hover:text-blue-800 font-bold"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ) : null;
+                  })
+                ) : (
+                  <span className="text-gray-400">담당자를 선택하세요</span>
+                )}
+              </div>
+              <svg
+                className={`w-5 h-5 text-gray-400 transition-transform ${isAssigneeDropdownOpen ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+            {/* 드롭다운 목록 */}
+            {isAssigneeDropdownOpen && (
+              <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                {users.map((user) => (
+                  <label
+                    key={user.id}
+                    className="flex items-center space-x-2 px-3 py-2 cursor-pointer hover:bg-gray-50"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={formData.assigneeIds?.includes(user.id)}
+                      onChange={() => handleAssigneeToggle(user.id)}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm">
+                      {user.name} ({user.email})
+                    </span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <hr className="border-gray-200" />
+
+          {/* 금주 실적 / 차주 계획 가로 배치 */}
+          <div className="grid grid-cols-2 gap-6">
+            {/* 금주 실적 섹션 */}
+            <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium text-gray-900">금주 실적</h3>
+                <label className="flex items-center space-x-1 text-xs text-gray-600 cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={formData.assigneeIds?.includes(user.id)}
-                    onChange={() => handleAssigneeToggle(user.id)}
+                    checked={formData.showThisWeekAchievement ?? true}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        showThisWeekAchievement: e.target.checked,
+                      })
+                    }
                     className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
-                  <span className="text-sm">
-                    {user.name} ({user.email})
-                  </span>
+                  <span>진척률 텍스트 표시</span>
                 </label>
-              ))}
-            </div>
-          </div>
+              </div>
 
-          <hr className="border-gray-200" />
+              {/* 금주 수치 입력 */}
+              <div className="grid grid-cols-3 gap-2 mb-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    총 개수
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formData.totalCount}
+                    onChange={(e) => {
+                      const newValue = parseInt(e.target.value) || 0;
+                      setFormData({
+                        ...formData,
+                        totalCount: newValue,
+                        nextTotalCount: newValue,
+                      });
+                    }}
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    완료 개수
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formData.completedCount}
+                    onChange={(e) => {
+                      const newValue = parseInt(e.target.value) || 0;
+                      setFormData({
+                        ...formData,
+                        completedCount: newValue,
+                        nextCompletedCount: newValue,
+                      });
+                    }}
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    진척률 (%)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={formData.progress}
+                    onChange={(e) => {
+                      const newValue = parseInt(e.target.value) || 0;
+                      setFormData({
+                        ...formData,
+                        progress: newValue,
+                        nextProgress: newValue,
+                      });
+                    }}
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
 
-          {/* 금주 실적 섹션 */}
-          <div>
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium text-gray-900">금주 실적</h3>
-              <label className="flex items-center space-x-2 text-sm text-gray-700 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formData.showThisWeekAchievement ?? true}
+              {/* 금주 실적 내용 */}
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  실적 내용
+                </label>
+                <textarea
+                  value={formData.thisWeekContent}
                   onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      showThisWeekAchievement: e.target.checked,
-                    })
+                    setFormData({ ...formData, thisWeekContent: e.target.value })
                   }
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <span>실적 텍스트 표시 (완료/총/진척률)</span>
-              </label>
-            </div>
-
-            {/* 금주 수치 입력 */}
-            <div className="grid grid-cols-3 gap-4 mb-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  총 개수
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  value={formData.totalCount}
-                  onChange={(e) => {
-                    const newValue = parseInt(e.target.value) || 0;
-                    setFormData({
-                      ...formData,
-                      totalCount: newValue,
-                      nextTotalCount: newValue, // 차주 계획에도 반영
-                    });
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  완료 개수
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  value={formData.completedCount}
-                  onChange={(e) => {
-                    const newValue = parseInt(e.target.value) || 0;
-                    setFormData({
-                      ...formData,
-                      completedCount: newValue,
-                      nextCompletedCount: newValue, // 차주 계획에도 반영
-                    });
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  진척률 (%)
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={formData.progress}
-                  onChange={(e) => {
-                    const newValue = parseInt(e.target.value) || 0;
-                    setFormData({
-                      ...formData,
-                      progress: newValue,
-                      nextProgress: newValue, // 차주 계획에도 반영
-                    });
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows={8}
+                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                  placeholder="- 1depth 항목&#10;  - 2depth 항목"
                 />
               </div>
             </div>
 
-            {/* 금주 실적 내용 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                실적 내용
-              </label>
-              <textarea
-                value={formData.thisWeekContent}
-                onChange={(e) =>
-                  setFormData({ ...formData, thisWeekContent: e.target.value })
-                }
-                rows={5}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                placeholder="마크다운 형식으로 입력하세요&#10;예:&#10;- 1depth 항목&#10;  - 2depth 항목"
-              />
-            </div>
-          </div>
+            {/* 차주 계획 섹션 */}
+            <div className="border border-gray-200 rounded-lg p-4 bg-blue-50">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium text-gray-900">차주 계획</h3>
+                <label className="flex items-center space-x-1 text-xs text-gray-600 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.showNextWeekAchievement}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        showNextWeekAchievement: e.target.checked,
+                      })
+                    }
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span>진척률 텍스트 표시</span>
+                </label>
+              </div>
 
-          <hr className="border-gray-200" />
+              {/* 차주 수치 입력 */}
+              <div className="grid grid-cols-3 gap-2 mb-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    총 개수
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formData.nextTotalCount}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        nextTotalCount: parseInt(e.target.value) || 0,
+                      })
+                    }
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    완료 개수
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formData.nextCompletedCount}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        nextCompletedCount: parseInt(e.target.value) || 0,
+                      })
+                    }
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    진척률 (%)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={formData.nextProgress}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        nextProgress: parseInt(e.target.value) || 0,
+                      })
+                    }
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
 
-          {/* 차주 계획 섹션 */}
-          <div>
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium text-gray-900">차주 계획</h3>
-              <label className="flex items-center space-x-2 text-sm text-gray-700 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formData.showNextWeekAchievement}
+              {/* 차주 계획 내용 */}
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  계획 내용
+                </label>
+                <textarea
+                  value={formData.nextWeekContent}
                   onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      showNextWeekAchievement: e.target.checked,
-                    })
+                    setFormData({ ...formData, nextWeekContent: e.target.value })
                   }
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <span>실적 텍스트 표시 (완료/총/진척률)</span>
-              </label>
-            </div>
-
-            {/* 차주 수치 입력 */}
-            <div className="grid grid-cols-3 gap-4 mb-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  총 개수
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  value={formData.nextTotalCount}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      nextTotalCount: parseInt(e.target.value) || 0,
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows={8}
+                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                  placeholder="- 1depth 항목&#10;  - 2depth 항목"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  완료 개수
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  value={formData.nextCompletedCount}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      nextCompletedCount: parseInt(e.target.value) || 0,
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  진척률 (%)
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={formData.nextProgress}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      nextProgress: parseInt(e.target.value) || 0,
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-
-            {/* 차주 계획 내용 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                계획 내용
-              </label>
-              <textarea
-                value={formData.nextWeekContent}
-                onChange={(e) =>
-                  setFormData({ ...formData, nextWeekContent: e.target.value })
-                }
-                rows={5}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                placeholder="마크다운 형식으로 입력하세요&#10;예:&#10;- 1depth 항목&#10;  - 2depth 항목"
-              />
             </div>
           </div>
 

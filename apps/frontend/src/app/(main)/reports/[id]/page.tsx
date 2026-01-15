@@ -16,8 +16,10 @@ import type {
   CreateTaskRequest,
   Attendance,
 } from '@/types';
+import { useAuth } from '@/lib/hooks/useAuth';
 
 type AttendanceViewMode = 'list' | 'calendar';
+type TaskViewMode = 'personal' | 'team';
 
 /**
  * 주간보고서 상세 페이지
@@ -26,6 +28,7 @@ export default function ReportDetailPage() {
   const params = useParams();
   const router = useRouter();
   const reportId = params.id as string;
+  const { user, isAdmin } = useAuth();
 
   const [report, setReport] = useState<WeeklyReport | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -35,6 +38,8 @@ export default function ReportDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'tasks' | 'attendance'>('tasks');
   const [attendanceViewMode, setAttendanceViewMode] = useState<AttendanceViewMode>('list');
+  // 업무 보기 모드: 관리자는 팀 실적, 일반 사용자는 개인 실적이 기본
+  const [taskViewMode, setTaskViewMode] = useState<TaskViewMode>(isAdmin ? 'team' : 'personal');
 
   // 업무 모달
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
@@ -323,7 +328,17 @@ export default function ReportDetailPage() {
         {activeTab === 'tasks' && (
           <div>
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold">업무 목록</h2>
+              <div className="flex items-center gap-4">
+                <h2 className="text-xl font-semibold">업무 목록</h2>
+                <select
+                  value={taskViewMode}
+                  onChange={(e) => setTaskViewMode(e.target.value as TaskViewMode)}
+                  className="px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="personal">개인 실적</option>
+                  <option value="team">팀 실적</option>
+                </select>
+              </div>
               <button
                 onClick={handleAddTask}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
@@ -332,7 +347,9 @@ export default function ReportDetailPage() {
               </button>
             </div>
             <TaskList
-              tasks={tasks}
+              tasks={taskViewMode === 'personal' && user
+                ? tasks.filter(task => task.assignees?.some(a => a.userId === user.id))
+                : tasks}
               onEdit={handleEditTask}
               onDelete={handleDeleteTask}
               onFinishIssue={async (issueId) => {

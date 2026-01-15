@@ -9,14 +9,18 @@ import { CreateIssueRequest, UpdateIssueRequest } from '@/types/api';
 import { issuesApi } from '@/lib/api/issues';
 import { apiClient } from '@/lib/api/client';
 
+type ViewMode = 'personal' | 'team';
+
 export default function IssuesPage() {
-    const { user } = useAuth();
+    const { user, isAdmin } = useAuth();
     const [issues, setIssues] = useState<Issue[]>([]);
     const [chains, setChains] = useState<Chain[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingIssue, setEditingIssue] = useState<Issue | null>(null);
     const [statusFilter, setStatusFilter] = useState<IssueStatus | 'ALL'>('IN_PROGRESS');
+    // 보기 모드: 관리자는 팀 실적, 일반 사용자는 개인 실적이 기본
+    const [viewMode, setViewMode] = useState<ViewMode>(isAdmin ? 'team' : 'personal');
 
     const fetchIssues = useCallback(async () => {
         if (!user?.teamId) return;
@@ -82,11 +86,24 @@ export default function IssuesPage() {
         }
     };
 
-    // 상태별 필터링
+    // 상태별 + 보기 모드 필터링
     const filteredIssues = useMemo(() => {
-        if (statusFilter === 'ALL') return issues;
-        return issues.filter(issue => issue.status === statusFilter);
-    }, [issues, statusFilter]);
+        let result = issues;
+
+        // 상태 필터
+        if (statusFilter !== 'ALL') {
+            result = result.filter(issue => issue.status === statusFilter);
+        }
+
+        // 보기 모드 필터 (개인 실적일 경우 본인이 담당자인 이슈만)
+        if (viewMode === 'personal' && user) {
+            result = result.filter(issue =>
+                issue.assignees?.some(a => a.userId === user.id)
+            );
+        }
+
+        return result;
+    }, [issues, statusFilter, viewMode, user]);
 
     // 상태별 옵션
     const statusOptions = [
@@ -106,23 +123,33 @@ export default function IssuesPage() {
                 </p>
             </div>
 
-            {/* 상태 필터 */}
-            <div className="mb-4 flex items-center gap-3">
-                <label htmlFor="status-filter" className="text-sm font-medium text-gray-700">
-                    상태:
-                </label>
+            {/* 필터 영역 */}
+            <div className="mb-4 flex items-center gap-4">
                 <select
-                    id="status-filter"
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value as IssueStatus | 'ALL')}
-                    className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    value={viewMode}
+                    onChange={(e) => setViewMode(e.target.value as ViewMode)}
+                    className="px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
-                    {statusOptions.map(option => (
-                        <option key={option.value} value={option.value}>
-                            {option.label}
-                        </option>
-                    ))}
+                    <option value="personal">개인 실적</option>
+                    <option value="team">팀 실적</option>
                 </select>
+                <div className="flex items-center gap-2">
+                    <label htmlFor="status-filter" className="text-sm font-medium text-gray-700">
+                        상태:
+                    </label>
+                    <select
+                        id="status-filter"
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value as IssueStatus | 'ALL')}
+                        className="px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                        {statusOptions.map(option => (
+                            <option key={option.value} value={option.value}>
+                                {option.label}
+                            </option>
+                        ))}
+                    </select>
+                </div>
                 <span className="text-sm text-gray-500">
                     {filteredIssues.length}개의 이슈
                 </span>

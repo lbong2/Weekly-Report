@@ -67,6 +67,7 @@ export interface CreateChainRequest {
   color: string;
   displayOrder?: number;
   isActive?: boolean;
+  assigneeIds?: string[];
 }
 
 export interface UpdateChainRequest {
@@ -75,6 +76,7 @@ export interface UpdateChainRequest {
   color?: string;
   displayOrder?: number;
   isActive?: boolean;
+  assigneeIds?: string[];
 }
 
 // 주간보고서

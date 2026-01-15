@@ -12,18 +12,32 @@ export class ChainsService {
   constructor(private prisma: PrismaService) { }
 
   async create(createChainDto: CreateChainDto) {
+    const { assigneeIds, ...chainData } = createChainDto;
+
     // 코드 중복 체크
     const existingChain = await this.prisma.chain.findUnique({
-      where: { code: createChainDto.code },
+      where: { code: chainData.code },
     });
 
     if (existingChain) {
       throw new ConflictException('Chain code already exists');
     }
 
-    return this.prisma.chain.create({
-      data: createChainDto,
+    const chain = await this.prisma.chain.create({
+      data: chainData,
     });
+
+    // 담당자 추가
+    if (assigneeIds && assigneeIds.length > 0) {
+      await this.prisma.chainAssignee.createMany({
+        data: assigneeIds.map((userId) => ({
+          chainId: chain.id,
+          userId,
+        })),
+      });
+    }
+
+    return this.findOne(chain.id);
   }
 
   async findAll(includeInactive = false) {
@@ -33,6 +47,19 @@ export class ChainsService {
         _count: {
           select: {
             tasks: true,
+          },
+        },
+        assignees: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                position: true,
+                displayOrder: true,
+              },
+            },
           },
         },
       },
@@ -51,6 +78,19 @@ export class ChainsService {
             tasks: true,
           },
         },
+        assignees: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                position: true,
+                displayOrder: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -62,6 +102,8 @@ export class ChainsService {
   }
 
   async update(id: string, updateChainDto: UpdateChainDto) {
+    const { assigneeIds, ...chainData } = updateChainDto;
+
     // 체인 존재 체크
     const existingChain = await this.prisma.chain.findUnique({
       where: { id },
@@ -72,9 +114,9 @@ export class ChainsService {
     }
 
     // 코드 변경 시 중복 체크
-    if (updateChainDto.code && updateChainDto.code !== existingChain.code) {
+    if (chainData.code && chainData.code !== existingChain.code) {
       const codeExists = await this.prisma.chain.findUnique({
-        where: { code: updateChainDto.code },
+        where: { code: chainData.code },
       });
 
       if (codeExists) {
@@ -82,10 +124,33 @@ export class ChainsService {
       }
     }
 
-    return this.prisma.chain.update({
-      where: { id },
-      data: updateChainDto,
-    });
+    // 체인 데이터 업데이트
+    if (Object.keys(chainData).length > 0) {
+      await this.prisma.chain.update({
+        where: { id },
+        data: chainData,
+      });
+    }
+
+    // 담당자 업데이트 (전달된 경우에만)
+    if (assigneeIds !== undefined) {
+      // 기존 담당자 삭제
+      await this.prisma.chainAssignee.deleteMany({
+        where: { chainId: id },
+      });
+
+      // 새 담당자 추가
+      if (assigneeIds.length > 0) {
+        await this.prisma.chainAssignee.createMany({
+          data: assigneeIds.map((userId) => ({
+            chainId: id,
+            userId,
+          })),
+        });
+      }
+    }
+
+    return this.findOne(id);
   }
 
   async remove(id: string) {

@@ -90,7 +90,7 @@ export class PptExportService {
       const pptx = new pptxgen();
 
       // 슬라이드 레이아웃 설정 (A4 용지: 210x297mm = 8.27x11.69 inch)
-      pptx.defineLayout({ name: 'A4', width: 11.69, height: 8.27 });
+      pptx.defineLayout({ name: 'A4', width: 10.83, height: 7.5 });
       pptx.layout = 'A4';
       pptx.author = 'Weekly Report System';
       pptx.company = report.team.name;
@@ -230,11 +230,11 @@ export class PptExportService {
 
         // 테이블 추가
         slide.addTable(tableRows, {
-          x: 0.3,
-          y: 1.1,
-          w: 11,
-          colW: [5.5, 5.5],
-          rowH: [0.4, 3.2, 3.2], // 헤더 작게, Task 행 크게 (총 4.35인치)
+          x: 0.42,
+          y: 1.31,
+          w: 10,
+          colW: [5, 5],
+          rowH: [0.43, 2.48, 2.48], // 헤더 작게, Task 행 크게 (총 4.35인치)
           border: { pt: 1, color: '000000' },
           fontSize: 12,
           fontFace: 'Noto Sans KR',
@@ -249,8 +249,8 @@ export class PptExportService {
   private addSlideHeader(slide: any, report: any) {
     // 좌측 상단 제목
     slide.addText('운영시스템 개선', {
-      x: 0.2,
-      y: 0.1,
+      x: 0.32,
+      y: 0.16,
       w: 7.76,
       h: 0.45,
       fontSize: 20,
@@ -262,18 +262,18 @@ export class PptExportService {
     const logoPath = path.join(process.cwd(), 'src/assets/logo.png');
     slide.addImage({
       path: logoPath,
-      x: 10,
-      y: 0.1,
-      w: 1.4,
-      h: 0.3,
+      x: 9.07,
+      y: 0.16,
+      w: 1.38,
+      h: 0.25,
     });
 
     // 파란색 헤더
     slide.addText(`${report.team.name} 개선/변경 [포항]`, {
-      x: 0.3,
-      y: 0.6,
-      w: 11,
-      h: 0.4,
+      x: 0.42,
+      y: 0.68,
+      w: 10.03,
+      h: 0.44,
       fontSize: 16,
       fontFace: 'Noto Sans KR Medium',
       color: 'FFFFFF',
@@ -293,23 +293,24 @@ export class PptExportService {
     const taskEndDate = task.endDate ? this.formatDate(task.endDate) : '-';
 
     // 금주 실적 내용 (text runs 배열 사용)
+    const paraSpace = 2.88; // 단락 앞 간격
     const thisWeekTextRuns: any[] = [
       // 모듈명 [대괄호 포함] + 제목 (Medium)
-      { text: `[${task.chain.name}] ${task.title}`, options: { fontSize: 12, fontFace: 'Noto Sans KR Medium', color: '000000', breakLine: true } },
+      { text: `[${task.chain.name}] ${task.title}`, options: { fontSize: 12, fontFace: 'Noto Sans KR Medium', color: '000000', breakLine: true, paraSpaceBefore: paraSpace } },
       // 목적 라벨 (Medium)
-      { text: '▪ 목적: ', options: { fontSize: 12, fontFace: 'Noto Sans KR Medium', color: '000000' } },
+      { text: '▪ 목적: ', options: { fontSize: 12, fontFace: 'Noto Sans KR Medium', color: '000000', paraSpaceBefore: paraSpace } },
       // 목적 내용 (일반)
       { text: `${task.purpose || '-'}`, options: { fontSize: 12, color: '000000', breakLine: true } },
       // 일정 라벨 (Medium)
-      { text: '▪ 일정: ', options: { fontSize: 12, fontFace: 'Noto Sans KR Medium', color: '000000' } },
+      { text: '▪ 일정: ', options: { fontSize: 12, fontFace: 'Noto Sans KR Medium', color: '000000', paraSpaceBefore: paraSpace } },
       // 일정 내용 (일반)
       { text: `${taskStartDate} ~ ${taskEndDate}`, options: { fontSize: 12, color: '000000', breakLine: true } },
       // 담당자 라벨 (Medium)
-      { text: '▪ 담당자: ', options: { fontSize: 12, fontFace: 'Noto Sans KR Medium', color: '000000' } },
+      { text: '▪ 담당자: ', options: { fontSize: 12, fontFace: 'Noto Sans KR Medium', color: '000000', paraSpaceBefore: paraSpace } },
       // 담당자 내용 (일반)
       { text: `${assigneeNames}`, options: { fontSize: 12, color: '000000', breakLine: true } },
       // 수행실적 라벨 (Medium)
-      { text: '▪ 수행실적: ', options: { fontSize: 12, fontFace: 'Noto Sans KR Medium', color: '000000' } },
+      { text: '▪ 수행실적: ', options: { fontSize: 12, fontFace: 'Noto Sans KR Medium', color: '000000', paraSpaceBefore: paraSpace } },
     ];
 
     // 금주 개발 실적 (옵션에 따라 표시)
@@ -319,24 +320,22 @@ export class PptExportService {
         options: { fontSize: 12, color: '000000', breakLine: true },
       });
     } else {
-      // 실적 텍스트 미표시 시 줄바꿈만 추가 (다음 컨텐츠를 위해) - 단, 라벨 뒤에 바로 줄바꿈이 필요한가?
-      // 기존 코드: 라벨은 breakLine: false, 텍스트가 breakLine: true.
-      // 텍스트가 없으면 라벨에 breakLine: true를 줘야 할 수도 있음.
-      // 하지만 thisWeekTextRuns 목록 뒤에 bullets가 오므로, 마지막 요소가 breakLine: true여야 함.
-      // 여기서는 그냥 빈 텍스트에 breakLine: true를 주는게 안전함.
       thisWeekTextRuns.push({ text: '', options: { fontSize: 12, breakLine: true } });
     }
 
     if (task.thisWeekContent) {
       const bullets = parseMarkdownToBullets(task.thisWeekContent);
+      const baseIndent = '      '; // 기본 indent 스페이스 6개
       bullets.forEach((bullet) => {
-        const indent = '  '.repeat(bullet.level + 1);
+        const indent = '  '.repeat(bullet.level);
+        const prefix = bullet.level === 0 ? '-' : '└';
         thisWeekTextRuns.push({
-          text: `${indent}- ${bullet.text}`,
+          text: `${baseIndent}${indent}${prefix} ${bullet.text}`,
           options: {
             fontSize: 12,
             color: '000000',
             breakLine: true,
+            paraSpaceBefore: 2.88,
           },
         });
       });
@@ -349,21 +348,21 @@ export class PptExportService {
     if (task.nextWeekContent && task.nextWeekContent.trim() !== '') {
       nextWeekTextRuns = [
         // 모듈명 [대괄호 포함] + 제목 (Medium)
-        { text: `[${task.chain.name}] ${task.title}`, options: { fontSize: 12, fontFace: 'Noto Sans KR Medium', color: '000000', breakLine: true } },
+        { text: `[${task.chain.name}] ${task.title}`, options: { fontSize: 12, fontFace: 'Noto Sans KR Medium', color: '000000', breakLine: true, paraSpaceBefore: paraSpace } },
         // 목적 라벨 (Medium)
-        { text: '▪ 목적: ', options: { fontSize: 12, fontFace: 'Noto Sans KR Medium', color: '000000' } },
+        { text: '▪ 목적: ', options: { fontSize: 12, fontFace: 'Noto Sans KR Medium', color: '000000', paraSpaceBefore: paraSpace } },
         // 목적 내용 (일반)
         { text: `${task.purpose || '-'}`, options: { fontSize: 12, color: '000000', breakLine: true } },
         // 일정 라벨 (Medium)
-        { text: '▪ 일정: ', options: { fontSize: 12, fontFace: 'Noto Sans KR Medium', color: '000000' } },
+        { text: '▪ 일정: ', options: { fontSize: 12, fontFace: 'Noto Sans KR Medium', color: '000000', paraSpaceBefore: paraSpace } },
         // 일정 내용 (일반)
         { text: `${taskStartDate} ~ ${taskEndDate}`, options: { fontSize: 12, color: '000000', breakLine: true } },
         // 담당자 라벨 (Medium)
-        { text: '▪ 담당자: ', options: { fontSize: 12, fontFace: 'Noto Sans KR Medium', color: '000000' } },
+        { text: '▪ 담당자: ', options: { fontSize: 12, fontFace: 'Noto Sans KR Medium', color: '000000', paraSpaceBefore: paraSpace } },
         // 담당자 내용 (일반)
         { text: `${assigneeNames}`, options: { fontSize: 12, color: '000000', breakLine: true } },
         // 수행계획 라벨 (Medium)
-        { text: '▪ 수행계획: ', options: { fontSize: 12, fontFace: 'Noto Sans KR Medium', color: '000000' } },
+        { text: '▪ 수행계획: ', options: { fontSize: 12, fontFace: 'Noto Sans KR Medium', color: '000000', paraSpaceBefore: paraSpace } },
       ];
 
       // 차주 개발 실적 (옵션에 따라 표시)
@@ -377,14 +376,17 @@ export class PptExportService {
       }
 
       const bullets = parseMarkdownToBullets(task.nextWeekContent);
+      const baseIndent = '      '; // 기본 indent 스페이스 6개
       bullets.forEach((bullet) => {
-        const indent = '  '.repeat(bullet.level + 1);
+        const indent = '  '.repeat(bullet.level);
+        const prefix = bullet.level === 0 ? '-' : '└';
         nextWeekTextRuns.push({
-          text: `${indent}- ${bullet.text}`,
+          text: `${baseIndent}${indent}${prefix} ${bullet.text}`,
           options: {
             fontSize: 12,
             color: '000000',
             breakLine: true,
+            paraSpaceBefore: 2.88,
           },
         });
       });
@@ -422,16 +424,16 @@ export class PptExportService {
     const logoPath = path.join(process.cwd(), 'src/assets/logo.png');
     slide.addImage({
       path: logoPath,
-      x: 10,
-      y: 0.1,
-      w: 1.4,
-      h: 0.3,
+      x: 9.07,
+      y: 0.16,
+      w: 1.38,
+      h: 0.25,
     });
 
     // 슬라이드 제목
     slide.addText(`인원현황 – ${report.team.name}`, {
-      x: 0.2,
-      y: 0.1,
+      x: 0.32,
+      y: 0.16,
       w: 7.76,
       h: 0.45,
       fontSize: 20,
@@ -439,7 +441,7 @@ export class PptExportService {
       color: '5B4B8A',
     });
 
-    let yPos = 0.6;
+    let yPos = 0.75;
 
     // 주간 날짜 정보 계산
     const weekStart = new Date(report.weekStart);
@@ -460,13 +462,13 @@ export class PptExportService {
     // 1. 인원현황: [구분, 팀명, 금주, 차주, 비고]
     const memberColW = [0.9, 0.9, 0.5, 0.5, 4.0];
     // 2. 교육/출장: [구분, 팀구분, 내용, 담당자, 실적(5), 계획(5), 비고]
-    const tripColW = [0.9, 0.9, 2.6, 0.8, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 3];
+    const tripColW = [0.9, 0.9, 2.6, 0.8, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 1.83];
     // 3. 휴가/훈련: [팀구분, 구분, 담당자, 계획(5), 비고]
-    const leaveColW = [0.9, 3.5, 0.8, 0.3, 0.3, 0.3, 0.3, 0.3, 4.5];
+    const leaveColW = [0.9, 3.5, 0.8, 0.3, 0.3, 0.3, 0.3, 0.3, 3.33];
 
     // ========== 1. 인원현황 ==========
     slide.addText('1.인원현황', {
-      x: 0.2,
+      x: 0.32,
       y: yPos,
       w: 2,
       h: 0.22,
@@ -474,7 +476,7 @@ export class PptExportService {
       fontFace: 'Noto Sans KR Medium',
       color: '1F4E78',
     });
-    yPos += 0.3;
+    yPos += 0.25;
 
     // 인원현황 테이블 - 구분, 비고는 rowspan:2
     const memberTable: any[][] = [
@@ -501,7 +503,7 @@ export class PptExportService {
     ];
 
     slide.addTable(memberTable, {
-      x: 0.3,
+      x: 0.42,
       y: yPos,
       w: 9.6,
       colW: memberColW,
@@ -510,7 +512,7 @@ export class PptExportService {
       fontFace: 'Noto Sans KR',
       fontSize: 10,
     });
-    yPos += memberTable.length * 0.15 + 0.75;
+    yPos += memberTable.length * 0.2 + 0.5;
 
     // ========== 2. 교육/출장 ==========
     const businessTrips = attendances.filter(
@@ -531,7 +533,7 @@ export class PptExportService {
     );
 
     slide.addText('2. 교육/출장', {
-      x: 0.2,
+      x: 0.32,
       y: yPos,
       w: 2,
       h: 0.22,
@@ -539,7 +541,7 @@ export class PptExportService {
       fontFace: 'Noto Sans KR Medium',
       color: '1F4E78',
     });
-    yPos += 0.3;
+    yPos += 0.25;
 
     // 교육/출장 테이블 - 구분,팀구분,내용,담당자,비고는 rowspan:3, 실적/계획은 colspan:5
     const tripTable: any[][] = [
@@ -613,7 +615,7 @@ export class PptExportService {
     }
 
     slide.addTable(tripTable, {
-      x: 0.3,
+      x: 0.42,
       y: yPos,
       w: 9.6,
       colW: tripColW,
@@ -622,7 +624,7 @@ export class PptExportService {
       fontFace: 'Noto Sans KR',
       fontSize: 10,
     });
-    yPos += tripTable.length * 0.2 + 0.6 + 0.25;
+    yPos += tripTable.length * 0.2 + 0.75;
 
     // ========== 3. 휴가/훈련 ==========
     const leaves = attendances.filter(
@@ -636,7 +638,7 @@ export class PptExportService {
     );
 
     slide.addText('3. 휴가/훈련', {
-      x: 0.2,
+      x: 0.32,
       y: yPos,
       w: 2,
       h: 0.22,
@@ -727,7 +729,7 @@ export class PptExportService {
     }
 
     slide.addTable(leaveTable, {
-      x: 0.3,
+      x: 0.42,
       y: yPos,
       w: 9.6,
       colW: leaveColW,
