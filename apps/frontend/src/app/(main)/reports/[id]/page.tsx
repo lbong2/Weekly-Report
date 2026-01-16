@@ -350,6 +350,7 @@ export default function ReportDetailPage() {
               tasks={taskViewMode === 'personal' && user
                 ? tasks.filter(task => task.assignees?.some(a => a.userId === user.id))
                 : tasks}
+              weeklyReportId={reportId}
               onEdit={handleEditTask}
               onDelete={handleDeleteTask}
               onFinishIssue={async (issueId) => {

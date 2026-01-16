@@ -11,6 +11,7 @@ import { WeeklyReportsModule } from './weekly-reports/weekly-reports.module';
 import { TasksModule } from './tasks/tasks.module';
 import { AttendancesModule } from './attendances/attendances.module';
 import { IssuesModule } from './issues/issues.module';
+import { FilesModule } from './files/files.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { IssuesModule } from './issues/issues.module';
     TasksModule,
     AttendancesModule,
     IssuesModule,
+    FilesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -55,3 +55,6 @@ Thumbs.db
 
 # Docker volumes (로컬 데이터)
 postgres_data/
+
+# Uploads (첨부파일)
+apps/backend/uploads/

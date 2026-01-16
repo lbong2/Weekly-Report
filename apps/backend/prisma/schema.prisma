@@ -51,6 +51,7 @@ model User {
   attendances Attendance[]
   issueAssignees IssueAssignee[]
   chainAssignees ChainAssignee[]
+  uploadedFiles File[]
 
   @@map("users")
 }
@@ -112,6 +113,7 @@ model WeeklyReport {
 
   team        Team         @relation(fields: [teamId], references: [id])
   tasks       Task[]
+  files       File[]
 
   @@unique([teamId, year, weekNumber])
   @@map("weekly_reports")
@@ -145,6 +147,7 @@ model Task {
   weeklyReport WeeklyReport   @relation(fields: [weeklyReportId], references: [id], onDelete: Cascade)
   chain        Chain          @relation(fields: [chainId], references: [id])
   assignees    TaskAssignee[]
+  files        File[]
 
   @@map("tasks")
 }
@@ -240,4 +243,29 @@ model IssueAssignee {
 
   @@unique([issueId, userId])
   @@map("issue_assignees")
+}
+
+// ========== File Management ==========
+
+model File {
+  id              String       @id @default(uuid())
+  weeklyReportId  String       @map("weekly_report_id")
+  taskId          String?      @map("task_id")
+  uploaderId      String       @map("uploader_id")
+
+  originalName    String       @map("original_name")
+  storedName      String       @map("stored_name")
+  mimeType        String       @map("mime_type")
+  size            Int
+  path            String
+  description     String?      @db.Text
+
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  weeklyReport    WeeklyReport @relation(fields: [weeklyReportId], references: [id], onDelete: Cascade)
+  task            Task?        @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  uploader        User         @relation(fields: [uploaderId], references: [id])
+
+  @@map("files")
 }

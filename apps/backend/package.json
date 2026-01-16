@@ -37,7 +37,8 @@
     "passport-jwt": "^4.0.1",
     "pptxgenjs": "^4.0.1",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
@@ -46,9 +47,11 @@
     "@types/bcrypt": "^5.0.2",
     "@types/express": "^5.0.0",
     "@types/jest": "^29.5.14",
+    "@types/multer": "^2.0.0",
     "@types/node": "^22.10.5",
     "@types/passport-jwt": "^4.0.1",
     "@types/supertest": "^6.0.2",
+    "@types/uuid": "^11.0.0",
     "@typescript-eslint/eslint-plugin": "^8.20.0",
     "@typescript-eslint/parser": "^8.20.0",
     "eslint": "^9.18.0",

@@ -169,3 +169,25 @@ export interface IssueAssignee {
   };
 }
 
+export interface ReportFile {
+  id: string;
+  weeklyReportId: string;
+  taskId?: string;
+  uploaderId: string;
+  originalName: string;
+  storedName: string;
+  mimeType: string;
+  size: number;
+  path: string;
+  description?: string;
+  uploader: {
+    id: string;
+    name: string;
+  };
+  task?: {
+    id: string;
+    title: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
