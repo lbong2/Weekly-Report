@@ -30,17 +30,8 @@ export class TasksService {
         throw new NotFoundException('Chain not found');
       }
 
-      // 진척률 자동 계산
-      let progress = taskData.progress ?? 0;
-      if (
-        taskData.totalCount &&
-        taskData.totalCount > 0 &&
-        taskData.completedCount !== undefined
-      ) {
-        progress = Math.round(
-          (taskData.completedCount / taskData.totalCount) * 100,
-        );
-      }
+      // 진척률은 사용자가 입력한 값 그대로 사용
+      const progress = taskData.progress ?? 0;
 
       // 이슈 ID 결정 (없으면 자동 생성)
       let finalIssueId = issueId;
@@ -209,15 +200,11 @@ export class TasksService {
         }
       }
 
-      // 진척률 자동 계산
-      let progress = taskData.progress;
+      // 진척률은 사용자가 입력한 값 그대로 사용
+      const progress = taskData.progress;
       const totalCount = taskData.totalCount ?? existing.totalCount;
       const completedCount =
         taskData.completedCount ?? existing.completedCount;
-
-      if (totalCount > 0 && completedCount !== undefined) {
-        progress = Math.round((completedCount / totalCount) * 100);
-      }
 
       // 담당자 업데이트 처리
       const assigneeUpdate =

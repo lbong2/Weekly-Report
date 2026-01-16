@@ -33,9 +33,11 @@ apiClient.interceptors.response.use(
   (error: AxiosError) => {
     // 401 Unauthorized: 토큰 만료 또는 인증 실패
     if (error.response?.status === 401) {
-      if (typeof window !== 'undefined') {
+      // 로그인 페이지에서는 리다이렉트하지 않음 (무한 루프 방지)
+      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+        localStorage.removeItem('auth-storage'); // zustand persist 상태도 초기화
         window.location.href = '/login';
       }
     }

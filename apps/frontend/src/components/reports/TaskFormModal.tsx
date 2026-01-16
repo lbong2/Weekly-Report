@@ -216,7 +216,7 @@ export function TaskFormModal({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
         {/* 헤더 */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
+        <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between z-10">
           <h2 className="text-xl font-semibold">
             {editTask ? '업무 수정' : '업무 추가'}
           </h2>
@@ -229,32 +229,10 @@ export function TaskFormModal({
         </div>
 
         {/* 폼 */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* 모듈 선택 */}
+        <form onSubmit={handleSubmit} className="p-4 space-y-3">
+          {/* 업무 제목 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              모듈 <span className="text-red-500">*</span>
-            </label>
-            <select
-              value={formData.chainId}
-              onChange={(e) =>
-                setFormData({ ...formData, chainId: e.target.value })
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            >
-              <option value="">선택하세요</option>
-              {chains.map((chain) => (
-                <option key={chain.id} value={chain.id}>
-                  {chain.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* 제목 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               업무 제목 <span className="text-red-500">*</span>
             </label>
             <input
@@ -263,15 +241,15 @@ export function TaskFormModal({
               onChange={(e) =>
                 setFormData({ ...formData, title: e.target.value })
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="업무 제목을 입력하세요"
               required
             />
           </div>
 
-          {/* 목적 */}
+          {/* 업무 목적 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               업무 목적
             </label>
             <input
@@ -280,15 +258,15 @@ export function TaskFormModal({
               onChange={(e) =>
                 setFormData({ ...formData, purpose: e.target.value })
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="업무의 목적을 입력하세요 (선택사항)"
             />
           </div>
 
-          {/* 일정 */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+          {/* 시작일 + 종료일 + 모듈 + 담당자 한 줄 */}
+          <div className="grid grid-cols-12 gap-3">
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 시작일
               </label>
               <input
@@ -297,11 +275,11 @@ export function TaskFormModal({
                 onChange={(e) =>
                   setFormData({ ...formData, startDate: e.target.value })
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full h-[34px] px-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 종료일
               </label>
               <input
@@ -310,29 +288,47 @@ export function TaskFormModal({
                 onChange={(e) =>
                   setFormData({ ...formData, endDate: e.target.value })
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full h-[34px] px-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-          </div>
-
-          {/* 담당자 */}
-          <div className="relative" ref={assigneeDropdownRef}>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              담당자
-            </label>
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                모듈 <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={formData.chainId}
+                onChange={(e) =>
+                  setFormData({ ...formData, chainId: e.target.value })
+                }
+                className="w-full h-[34px] px-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              >
+                <option value="">선택</option>
+                {chains.map((chain) => (
+                  <option key={chain.id} value={chain.id}>
+                    {chain.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {/* 담당자 */}
+            <div className="col-span-6 relative" ref={assigneeDropdownRef}>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                담당자
+              </label>
             {/* 선택된 담당자 표시 및 드롭다운 토글 */}
             <div
               onClick={() => setIsAssigneeDropdownOpen(!isAssigneeDropdownOpen)}
-              className="w-full min-h-[42px] px-3 py-2 border border-gray-300 rounded-md cursor-pointer bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+              className="w-full h-[34px] px-2 text-sm border border-gray-300 rounded-md cursor-pointer bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
             >
-              <div className="flex flex-wrap gap-1 flex-1">
+              <div className="flex gap-1 flex-1 overflow-hidden">
                 {formData.assigneeIds && formData.assigneeIds.length > 0 ? (
                   formData.assigneeIds.map((userId) => {
                     const user = users.find((u) => u.id === userId);
                     return user ? (
                       <span
                         key={userId}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-800 text-sm rounded"
+                        className="inline-flex items-center gap-1 px-1.5 bg-blue-100 text-blue-800 text-xs rounded"
                       >
                         {user.name}
                         <button
@@ -341,7 +337,7 @@ export function TaskFormModal({
                             e.stopPropagation();
                             handleAssigneeToggle(userId);
                           }}
-                          className="text-blue-600 hover:text-blue-800 font-bold"
+                          className="text-blue-600 hover:text-blue-800 font-bold text-xs"
                         >
                           ×
                         </button>
@@ -382,16 +378,17 @@ export function TaskFormModal({
                 ))}
               </div>
             )}
+            </div>
           </div>
 
           <hr className="border-gray-200" />
 
           {/* 금주 실적 / 차주 계획 가로 배치 */}
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-2 gap-4">
             {/* 금주 실적 섹션 */}
-            <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium text-gray-900">금주 실적</h3>
+            <div className="border border-gray-200 rounded-lg p-3 bg-gray-50">
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="text-base font-medium text-gray-900">금주 실적</h3>
                 <label className="flex items-center space-x-1 text-xs text-gray-600 cursor-pointer">
                   <input
                     type="checkbox"
@@ -409,7 +406,7 @@ export function TaskFormModal({
               </div>
 
               {/* 금주 수치 입력 */}
-              <div className="grid grid-cols-3 gap-2 mb-4">
+              <div className="grid grid-cols-3 gap-2 mb-2">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
                     총 개수
@@ -426,6 +423,7 @@ export function TaskFormModal({
                         nextTotalCount: newValue,
                       });
                     }}
+                    onFocus={(e) => e.target.select()}
                     className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -445,6 +443,7 @@ export function TaskFormModal({
                         nextCompletedCount: newValue,
                       });
                     }}
+                    onFocus={(e) => e.target.select()}
                     className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -458,13 +457,14 @@ export function TaskFormModal({
                     max="100"
                     value={formData.progress}
                     onChange={(e) => {
-                      const newValue = parseInt(e.target.value) || 0;
+                      const newValue = Math.min(100, Math.max(0, parseInt(e.target.value) || 0));
                       setFormData({
                         ...formData,
                         progress: newValue,
                         nextProgress: newValue,
                       });
                     }}
+                    onFocus={(e) => e.target.select()}
                     className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -480,7 +480,7 @@ export function TaskFormModal({
                   onChange={(e) =>
                     setFormData({ ...formData, thisWeekContent: e.target.value })
                   }
-                  rows={8}
+                  rows={6}
                   className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
                   placeholder="- 1depth 항목&#10;  - 2depth 항목"
                 />
@@ -488,9 +488,9 @@ export function TaskFormModal({
             </div>
 
             {/* 차주 계획 섹션 */}
-            <div className="border border-gray-200 rounded-lg p-4 bg-blue-50">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium text-gray-900">차주 계획</h3>
+            <div className="border border-gray-200 rounded-lg p-3 bg-blue-50">
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="text-base font-medium text-gray-900">차주 계획</h3>
                 <label className="flex items-center space-x-1 text-xs text-gray-600 cursor-pointer">
                   <input
                     type="checkbox"
@@ -508,7 +508,7 @@ export function TaskFormModal({
               </div>
 
               {/* 차주 수치 입력 */}
-              <div className="grid grid-cols-3 gap-2 mb-4">
+              <div className="grid grid-cols-3 gap-2 mb-2">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
                     총 개수
@@ -523,6 +523,7 @@ export function TaskFormModal({
                         nextTotalCount: parseInt(e.target.value) || 0,
                       })
                     }
+                    onFocus={(e) => e.target.select()}
                     className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -540,6 +541,7 @@ export function TaskFormModal({
                         nextCompletedCount: parseInt(e.target.value) || 0,
                       })
                     }
+                    onFocus={(e) => e.target.select()}
                     className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -555,9 +557,10 @@ export function TaskFormModal({
                     onChange={(e) =>
                       setFormData({
                         ...formData,
-                        nextProgress: parseInt(e.target.value) || 0,
+                        nextProgress: Math.min(100, Math.max(0, parseInt(e.target.value) || 0)),
                       })
                     }
+                    onFocus={(e) => e.target.select()}
                     className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -573,7 +576,7 @@ export function TaskFormModal({
                   onChange={(e) =>
                     setFormData({ ...formData, nextWeekContent: e.target.value })
                   }
-                  rows={8}
+                  rows={6}
                   className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
                   placeholder="- 1depth 항목&#10;  - 2depth 항목"
                 />
@@ -582,7 +585,7 @@ export function TaskFormModal({
           </div>
 
           {/* 버튼 */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+          <div className="flex justify-end gap-3 pt-3 border-t border-gray-200">
             <button
               type="button"
               onClick={onClose}
