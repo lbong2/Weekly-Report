@@ -7,3 +7,4 @@ export { chainsApi } from './chains';
 export { usersApi } from './users';
 export { teamsApi } from './teams';
 export { attendanceTypesApi } from './attendance-types';
+export { filesApi } from './files';

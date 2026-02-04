@@ -26,8 +26,12 @@ services:
     environment:
       DATABASE_URL: "postgresql://postgres:postgres@postgres:5432/weekly_report?schema=public"
       NODE_ENV: production
+      UPLOAD_DIR: /app/uploads
+      FILE_DOWNLOAD_BASE_URL: "http://10.10.92.116:4000/api/v1"
     ports:
       - "4000:4000"
+    volumes:
+      - upload_data:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -48,4 +52,6 @@ services:
 
 volumes:
   postgres_data:
+    driver: local
+  upload_data:
     driver: local

@@ -42,6 +42,9 @@ export class PptExportService {
                   },
                 },
               },
+              files: {
+                orderBy: { createdAt: 'asc' },
+              },
             },
             orderBy: {
               displayOrder: 'asc',
@@ -234,11 +237,48 @@ export class PptExportService {
           y: 1.31,
           w: 10,
           colW: [5, 5],
-          rowH: [0.43, 2.48, 2.48], // 헤더 작게, Task 행 크게 (총 4.35인치)
+          rowH: [0.43, 2.6, 2.6], // 헤더 작게, Task 행 크게 (총 4.35인치)
           border: { pt: 1, color: '000000' },
           fontSize: 12,
           fontFace: 'Noto Sans KR',
         });
+
+        // 첨부파일 아이콘 이미지 추가 (파일이 있는 Task에만)
+        const docsIconPath = path.join(process.cwd(), 'src/assets/docs.png');
+        const baseUrl = process.env.FILE_DOWNLOAD_BASE_URL || 'http://localhost:4000/api/v1';
+
+        // Task1 파일 아이콘 (좌하단: x=0.52, y=4.22-0.35=3.87)
+        if (task1.files && task1.files.length > 0) {
+          task1.files.forEach((file: any, fileIndex: number) => {
+            const downloadUrl = `${baseUrl}/files/${file.id}/download`;
+            slide.addImage({
+              path: docsIconPath,
+              x: 0.52 + (fileIndex * 0.35), // 아이콘 간격 0.35인치
+              y: 4,
+              w: 0.28,
+              h: 0.28,
+              hyperlink: { url: downloadUrl, tooltip: file.originalName },
+            });
+          });
+        }
+
+        // Task2 파일 아이콘 (좌하단: x=0.52, y=6.70-0.35=6.35)
+        if (i + 1 < groupTasks.length) {
+          const task2 = groupTasks[i + 1];
+          if (task2.files && task2.files.length > 0) {
+            task2.files.forEach((file: any, fileIndex: number) => {
+              const downloadUrl = `${baseUrl}/files/${file.id}/download`;
+              slide.addImage({
+                path: docsIconPath,
+                x: 0.52 + (fileIndex * 0.35),
+                y: 6.6,
+                w: 0.28,
+                h: 0.28,
+                hyperlink: { url: downloadUrl, tooltip: file.originalName },
+              });
+            });
+          }
+        }
       }
     });
   }
@@ -340,6 +380,8 @@ export class PptExportService {
         });
       });
     }
+
+    // 첨부파일은 아이콘 이미지로 표시 (createTaskSlides에서 처리)
 
     // 차주 계획 내용 (text runs 배열 사용)
     // nextWeekContent가 비어있으면 빈칸으로 표시
